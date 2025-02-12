@@ -95,3 +95,23 @@ function querycraft_load_more_callback()
 }
 add_action('wp_ajax_querycraft_load_more', 'querycraft_load_more_callback');
 add_action('wp_ajax_nopriv_querycraft_load_more', 'querycraft_load_more_callback');
+
+// Add a top-level admin menu for QueryCraft.
+function querycraft_add_admin_menu()
+{
+    add_menu_page(
+        'QueryCraft Shortcode Generator', // Page title
+        'QueryCraft',                     // Menu title
+        'manage_options',                 // Capability required
+        'querycraft-admin',               // Menu slug
+        'querycraft_render_shortcode_generator_page', // Callback to render the page
+        'dashicons-admin-customizer',     // Dashicon icon class
+        26                                // Position in the menu (lower numbers appear higher)
+    );
+}
+add_action('admin_menu', 'querycraft_add_admin_menu');
+
+function querycraft_render_shortcode_generator_page()
+{
+    include_once QUERYCRAFT_PLUGIN_DIR . 'admin/shortcode-generator.php';
+}
