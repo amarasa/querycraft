@@ -30,6 +30,9 @@ define('QUERYCRAFT_VERSION', '1.0.0');
 define('QUERYCRAFT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('QUERYCRAFT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
+// Define backup directory (within the plugin folder)
+define('QUERYCRAFT_BACKUP_DIR', QUERYCRAFT_PLUGIN_DIR . 'backups');
+
 // Include the main plugin class.
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft.php';
 
@@ -115,3 +118,154 @@ function querycraft_render_shortcode_generator_page()
 {
     include_once QUERYCRAFT_PLUGIN_DIR . 'admin/shortcode-generator.php';
 }
+
+/**
+ * Recursively remove a directory and all its contents.
+ *
+ * @param string $dir Directory path to remove.
+ */
+function querycraft_rrmdir($dir)
+{
+    if (! file_exists($dir)) {
+        return;
+    }
+    if (is_file($dir)) {
+        @unlink($dir);
+        return;
+    }
+    $files = scandir($dir);
+    foreach ($files as $file) {
+        if ($file === '.' || $file === '..') {
+            continue;
+        }
+        $path = $dir . '/' . $file;
+        if (is_dir($path)) {
+            querycraft_rrmdir($path);
+        } else {
+            @unlink($path);
+        }
+    }
+    @rmdir($dir);
+}
+
+/**
+ * Recursively copy files & folders from source to destination.
+ *
+ * @param string $source Source directory.
+ * @param string $destination Destination directory.
+ */
+function querycraft_recursive_copy($source, $destination)
+{
+    $dir = opendir($source);
+    @mkdir($destination, 0755, true);
+    while (false !== ($file = readdir($dir))) {
+        if ($file === '.' || $file === '..') {
+            continue;
+        }
+        $srcPath = $source . '/' . $file;
+        $dstPath = $destination . '/' . $file;
+        if (is_dir($srcPath)) {
+            querycraft_recursive_copy($srcPath, $dstPath);
+        } else {
+            copy($srcPath, $dstPath);
+        }
+    }
+    closedir($dir);
+}
+
+/**
+ * Attempts to move a directory; if rename fails, falls back to a recursive copy.
+ *
+ * @param string $source
+ * @param string $destination
+ */
+function querycraft_move_or_copy($source, $destination)
+{
+    // Try rename first.
+    if (@rename($source, $destination)) {
+        return;
+    }
+    // Otherwise, copy recursively.
+    querycraft_recursive_copy($source, $destination);
+}
+
+/**
+ * On plugin activation, create the 'querycraft' directories in the active theme
+ * and add a sample CTA file, or restore them from backup if available.
+ */
+function querycraft_on_activation()
+{
+    // Ensure our backup directory exists.
+    if (! file_exists(QUERYCRAFT_BACKUP_DIR)) {
+        wp_mkdir_p(QUERYCRAFT_BACKUP_DIR);
+    }
+
+    $theme_dir = get_stylesheet_directory();
+    $theme_qc = $theme_dir . '/querycraft';
+    $backup_qc = QUERYCRAFT_BACKUP_DIR . '/querycraft';
+
+    // If a backup exists, restore it.
+    if (file_exists($backup_qc)) {
+        if (file_exists($theme_qc)) {
+            querycraft_rrmdir($theme_qc);
+        }
+        querycraft_move_or_copy($backup_qc, $theme_qc);
+        querycraft_rrmdir($backup_qc);
+    } else {
+        // No backup exists; create fresh folder structure.
+        if (! file_exists($theme_qc)) {
+            wp_mkdir_p($theme_qc);
+        }
+        if (! file_exists($theme_qc . '/templates')) {
+            wp_mkdir_p($theme_qc . '/templates');
+        }
+        if (! file_exists($theme_qc . '/cta')) {
+            wp_mkdir_p($theme_qc . '/cta');
+        }
+        $sample_cta_file = $theme_qc . '/cta/sample-cta.php';
+        if (! file_exists($sample_cta_file)) {
+            $sample_cta_content = "<?php
+/**
+ * Sample CTA Template for QueryCraft
+ *
+ * You can override or remove this file as needed.
+ */
+?>
+<div class=\"sample-cta bg-blue-100 p-4 rounded\">
+    <h3 class=\"font-bold text-blue-800 mb-2\">Sample CTA</h3>
+    <p class=\"text-sm text-blue-700\">
+        This is a sample CTA from QueryCraft. Feel free to customize this file!
+    </p>
+</div>";
+            file_put_contents($sample_cta_file, $sample_cta_content);
+        }
+    }
+}
+register_activation_hook(__FILE__, 'querycraft_on_activation');
+
+/**
+ * On plugin deactivation, back up the 'querycraft' folder from the active theme
+ * to the plugin's backup directory, then remove it from the theme.
+ */
+function querycraft_on_deactivation()
+{
+    $theme_dir = get_stylesheet_directory();
+    $theme_qc  = $theme_dir . '/querycraft';
+    $backup_qc = QUERYCRAFT_BACKUP_DIR . '/querycraft';
+
+    if (! file_exists($theme_qc)) {
+        return;
+    }
+
+    // Remove any existing backup.
+    if (file_exists($backup_qc)) {
+        querycraft_rrmdir($backup_qc);
+    }
+
+    // Move (or copy) the theme querycraft folder to the backup.
+    querycraft_move_or_copy($theme_qc, $backup_qc);
+
+    // Remove the original querycraft folder from the theme.
+    querycraft_rrmdir($theme_qc);
+}
+register_deactivation_hook(__FILE__, 'querycraft_on_deactivation');
