@@ -42,11 +42,13 @@ $excerpt = get_the_excerpt($post);
         <!-- Featured Image on the left -->
         <div class="w-full md:w-1/3 flex-shrink-0">
             <?php if ($featured_image) : ?>
-                <?php echo $featured_image; ?>
-            <?php else : ?>
-                <!-- Fallback if no featured image -->
-                <div class="bg-gray-200 w-full h-48 rounded"></div>
-            <?php endif; ?>
+                <a href="<?php echo esc_url(get_permalink($post)); ?>"
+                    <?php echo $featured_image; ?>
+                    </a>
+                <?php else : ?>
+                    <!-- Fallback if no featured image -->
+                    <div class="bg-gray-200 w-full h-48 rounded"></div>
+                <?php endif; ?>
         </div>
 
         <!-- Text content on the right -->

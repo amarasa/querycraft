@@ -29,7 +29,9 @@ $featured_image = get_the_post_thumbnail($post->ID, 'large', [
         <!-- Featured Image -->
         <?php if ($featured_image) : ?>
             <div class="w-full h-48 overflow-hidden rounded-t-md mb-2">
-                <?php echo $featured_image; ?>
+                <a href="<?php echo esc_url(get_permalink($post)); ?>">
+                    <?php echo $featured_image; ?>
+                </a>
             </div>
         <?php endif; ?>
 

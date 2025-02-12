@@ -54,17 +54,22 @@ function querycraft_load_more_callback()
 
     // Default shortcode params (in case none are passed).
     $shortcode_params = [
-        'pt'              => 'post',
-        'display'         => 2,
-        'paged'           => 'load_more', // or 'infinite_scroll'
-        'orderby'         => 'date',
-        'order'           => 'ASC',
-        'status'          => 'publish',
-        'taxonomy'        => '',
-        'term'            => '',
-        'meta_key'        => '',
-        'meta_value'      => '',
-        'compare'         => '=',
+        'pt'         => 'post',
+        'display'    => 2,
+        'paged'      => 'load_more', // or 'infinite_scroll'
+        'orderby'    => 'date',
+        'order'      => 'ASC',
+        'status'     => 'publish',
+        'taxonomy'   => '',
+        'term'       => '',
+        'meta_key'   => '',
+        'meta_value' => '',
+        'compare'    => '=',
+        // The user might pass a template attribute, or we default to "title"
+        'template'   => 'title',
+        // If your CTA logic needs to work here too, add those attributes as well
+        // 'cta_template' => '',
+        // 'cta_interval' => 0,
     ];
 
     // If the AJAX request includes a "shortcode" param, decode & merge it.
@@ -77,20 +82,39 @@ function querycraft_load_more_callback()
     }
 
     require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft-query-builder.php';
-    $query_args = QueryCraft_Query_Builder::build_query_args($shortcode_params);
+    require_once QUERYCRAFT_PLUGIN_DIR . 'includes/template-loader.php'; // Make sure this is included
+    // If you have CTA loader, include that too if needed
+    // require_once QUERYCRAFT_PLUGIN_DIR . 'includes/cta-loader.php';
 
-    // Override the numeric paged value for subsequent pages.
+    // Build query arguments with our Query Builder.
+    $query_args = QueryCraft_Query_Builder::build_query_args($shortcode_params);
     $query_args['paged'] = $page;
 
     $query = new WP_Query($query_args);
 
     ob_start();
+    $post_count = 0;
+
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
-            echo '<li>' . get_the_title() . '</li>';
+            $post_count++;
+
+            // Render using the same template system as the main loop.
+            querycraft_get_template($shortcode_params['template'], ['post' => get_post()]);
+
+            // If you want to replicate CTA insertion logic, you'd do something like:
+            /*
+            if ( ! empty( $shortcode_params['cta_template'] )
+                 && ! empty( $shortcode_params['cta_interval'] )
+                 && $shortcode_params['cta_interval'] > 0
+                 && ( $post_count % (int)$shortcode_params['cta_interval'] === 0 ) ) {
+                querycraft_get_cta( $shortcode_params['cta_template'] );
+            }
+            */
         }
     }
+
     $posts_html = ob_get_clean();
     wp_reset_postdata();
 
@@ -98,6 +122,7 @@ function querycraft_load_more_callback()
 }
 add_action('wp_ajax_querycraft_load_more', 'querycraft_load_more_callback');
 add_action('wp_ajax_nopriv_querycraft_load_more', 'querycraft_load_more_callback');
+
 
 // Add a top-level admin menu for QueryCraft.
 function querycraft_add_admin_menu()
