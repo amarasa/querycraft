@@ -19,6 +19,7 @@ class QueryCraft_Query_Builder
             'meta_key'   => '',
             'meta_value' => '',
             'compare'    => '=',
+            'offset'     => 0, // New default offset
         ];
 
         $parsed = shortcode_atts($defaults, $atts, 'load');
@@ -31,7 +32,7 @@ class QueryCraft_Query_Builder
             'post_status'    => array_map('sanitize_text_field', explode(',', $parsed['status'])),
         ];
 
-        // Taxonomy query
+        // Taxonomy query.
         if (! empty($parsed['taxonomy']) && ! empty($parsed['term'])) {
             $query_args['tax_query'] = [
                 [
@@ -42,7 +43,7 @@ class QueryCraft_Query_Builder
             ];
         }
 
-        // Meta query
+        // Meta query.
         if (! empty($parsed['meta_key']) && '' !== $parsed['meta_value']) {
             $query_args['meta_query'] = [
                 [
@@ -51,6 +52,11 @@ class QueryCraft_Query_Builder
                     'compare' => sanitize_text_field($parsed['compare']),
                 ],
             ];
+        }
+
+        // Add offset if set.
+        if (isset($parsed['offset']) && is_numeric($parsed['offset'])) {
+            $query_args['offset'] = (int) $parsed['offset'];
         }
 
         return $query_args;

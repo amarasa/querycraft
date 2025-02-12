@@ -179,6 +179,14 @@ $available_cta_templates = querycraft_get_available_templates('cta');
                     </td>
                 </tr>
                 <tr>
+                    <th scope="row"><label for="qc-offset">Offset</label></th>
+                    <td>
+                        <input name="qc_offset" type="number" id="qc-offset" value="0" class="small-text" />
+                        <p class="description">Number of posts to skip before starting the query.</p>
+                    </td>
+                </tr>
+
+                <tr>
                     <th scope="row"><label for="qc-display">Posts Per Page</label></th>
                     <td>
                         <input name="qc_display" type="number" id="qc-display" value="6" class="small-text" />
@@ -256,23 +264,27 @@ $available_cta_templates = querycraft_get_available_templates('cta');
                 var template = $('#qc-template').val();
                 var cta_template = $('#qc-cta-template').val();
                 var cta_interval = $('#qc-cta-interval').val();
+                var offset = $('#qc-offset').val();
 
                 var shortcode = '[load';
                 shortcode += ' pt="' + pt + '"';
                 shortcode += ' display="' + display + '"';
                 shortcode += ' paged="' + paged + '"';
                 shortcode += ' template="' + template + '"';
-
                 if (cta_template !== '') {
                     shortcode += ' cta_template="' + cta_template + '"';
                 }
                 if (cta_interval > 0) {
                     shortcode += ' cta_interval="' + cta_interval + '"';
                 }
+                if (offset !== '' && offset !== '0') {
+                    shortcode += ' offset="' + offset + '"';
+                }
                 shortcode += ']';
 
                 $('#qc-shortcode-output').val(shortcode);
             }
+
 
             // Initial generation.
             generateShortcode();

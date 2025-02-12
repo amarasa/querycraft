@@ -79,11 +79,12 @@ class QueryCraft
             'meta_key'      => '',
             'meta_value'    => '',
             'compare'       => '=',
-            'template'      => 'title',  // Template for post output.
-            // New CTA attributes:
-            'cta_template'  => '',       // If empty, no CTA will be inserted.
-            'cta_interval'  => 0,        // Number of posts after which to insert a CTA.
+            'template'      => 'title',  // Template for rendering each post
+            'cta_template'  => '',       // CTA template (if provided)
+            'cta_interval'  => 0,        // Insert CTA after every N posts (0 means disabled)
+            'offset'        => 0,        // New attribute: number of posts to skip
         ], $atts, 'load');
+
 
         // Build the query.
         $query_args = QueryCraft_Query_Builder::build_query_args($atts);
