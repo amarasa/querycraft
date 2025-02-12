@@ -4,7 +4,7 @@
  * Plugin Name: QueryCraft
  * Plugin URI:  https://github.com/amarasa/querycraft
  * Description: A flexible shortcode-based plugin for building dynamic post queries with multiple pagination options.
- * Version:     1.0.2
+ * Version:     1.0.3
  * Author:      Angelo Marasa
  * Author URI:  https://github.com/amarasa
  * License:     GPL-2.0+
@@ -26,7 +26,7 @@ if (! defined('ABSPATH')) {
 }
 
 // Define plugin version and paths.
-define('QUERYCRAFT_VERSION', '1.0.2');
+define('QUERYCRAFT_VERSION', '1.0.3');
 define('QUERYCRAFT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('QUERYCRAFT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -58,7 +58,7 @@ function querycraft_load_more_callback()
         'display'    => 2,
         'paged'      => 'load_more', // or 'infinite_scroll'
         'orderby'    => 'date',
-        'order'      => 'ASC',
+        'order'      => 'DESC',
         'status'     => 'publish',
         'taxonomy'   => '',
         'term'       => '',
@@ -294,3 +294,27 @@ function querycraft_on_deactivation()
     querycraft_rrmdir($theme_qc);
 }
 register_deactivation_hook(__FILE__, 'querycraft_on_deactivation');
+
+
+add_action('wp_ajax_querycraft_get_terms', 'querycraft_get_terms_callback');
+function querycraft_get_terms_callback()
+{
+    if (!isset($_GET['taxonomy'])) {
+        wp_send_json_error('No taxonomy provided');
+    }
+    $taxonomy = sanitize_text_field($_GET['taxonomy']);
+    $terms = get_terms([
+        'taxonomy'   => $taxonomy,
+        'hide_empty' => false,
+    ]);
+    $options = [];
+    if (!is_wp_error($terms)) {
+        foreach ($terms as $term) {
+            $options[] = [
+                'id'   => $term->slug,
+                'text' => $term->name,
+            ];
+        }
+    }
+    wp_send_json_success($options);
+}

@@ -12,7 +12,7 @@ class QueryCraft_Query_Builder
             'display'    => 2,
             'paged'      => 'numbered',
             'orderby'    => 'date',
-            'order'      => 'ASC',
+            'order'      => 'DESC',
             'status'     => 'publish',
             'taxonomy'   => '',
             'term'       => '',
