@@ -4,6 +4,9 @@ if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
+require_once QUERYCRAFT_PLUGIN_DIR . 'includes/template-loader.php';
+require_once QUERYCRAFT_PLUGIN_DIR . 'includes/cta-loader.php';
+
 class QueryCraft
 {
 
@@ -65,17 +68,21 @@ class QueryCraft
 
         // Merge shortcode attributes with defaults.
         $atts = shortcode_atts([
-            'pt'         => 'post',
-            'display'    => 2,
-            'paged'      => 'numbered', // can be 'load_more', 'infinite_scroll', etc.
-            'orderby'    => 'date',
-            'order'      => 'ASC',
-            'status'     => 'publish',
-            'taxonomy'   => '',
-            'term'       => '',
-            'meta_key'   => '',
-            'meta_value' => '',
-            'compare'    => '=',
+            'pt'            => 'post',
+            'display'       => 2,
+            'paged'         => 'numbered', // can be 'load_more', 'infinite_scroll', etc.
+            'orderby'       => 'date',
+            'order'         => 'ASC',
+            'status'        => 'publish',
+            'taxonomy'      => '',
+            'term'          => '',
+            'meta_key'      => '',
+            'meta_value'    => '',
+            'compare'       => '=',
+            'template'      => 'title',  // Template for post output.
+            // New CTA attributes:
+            'cta_template'  => '',       // If empty, no CTA will be inserted.
+            'cta_interval'  => 0,        // Number of posts after which to insert a CTA.
         ], $atts, 'load');
 
         // Build the query.
@@ -92,28 +99,43 @@ class QueryCraft
         if ($query->have_posts()) {
             $pagination_type = sanitize_text_field($atts['paged']);
 
-            /**
-             * If infinite scroll is selected, we do:
-             * 1) A single container (querycraft-infinite-scroll)
-             * 2) The <ul> for initial posts
-             * 3) A spinner for loading
-             */
+            // We'll use a counter to track posts in the loop.
+            $post_count = 0;
+
             if ('infinite_scroll' === $pagination_type) {
                 // Encode the shortcode attributes for the AJAX request.
                 $shortcode_data = json_encode($atts);
 
                 // Output the container with data attributes.
                 echo '<div class="querycraft-infinite-scroll" 
-					data-current-page="' . esc_attr($current_page) . '"
-					data-max-pages="' . esc_attr($query->max_num_pages) . '"
-					data-shortcode-params="' . esc_attr($shortcode_data) . '">';
+                    data-current-page="' . esc_attr($current_page) . '"
+                    data-max-pages="' . esc_attr($query->max_num_pages) . '"
+                    data-shortcode-params="' . esc_attr($shortcode_data) . '">';
 
                 echo '<ul class="querycraft-list">';
 
+                /**
+                 * Before Loop Hook for Infinite Scroll.
+                 */
+                do_action('querycraft_before_loop', $atts, $query);
+
                 while ($query->have_posts()) {
                     $query->the_post();
-                    echo '<li>' . get_the_title() . '</li>';
+                    $post_count++;
+                    // Render the post using the selected template.
+                    querycraft_get_template($atts['template'], array('post' => get_post()));
+
+                    // If CTA attributes are set, and we've reached the interval, insert the CTA.
+                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
+                        querycraft_get_cta($atts['cta_template']);
+                    }
                 }
+
+                /**
+                 * After Loop Hook for Infinite Scroll.
+                 */
+                do_action('querycraft_after_loop', $atts, $query);
+
                 echo '</ul>';
                 echo '</div>'; // close .querycraft-infinite-scroll
 
@@ -121,12 +143,29 @@ class QueryCraft
 
                 wp_reset_postdata();
             } else {
-                // Normal loop (or load more, or numbered, etc.)
                 echo '<ul class="querycraft-list">';
+
+                /**
+                 * Before Loop Hook for Normal Loop.
+                 */
+                do_action('querycraft_before_loop', $atts, $query);
+
                 while ($query->have_posts()) {
                     $query->the_post();
-                    echo '<li>' . get_the_title() . '</li>';
+                    $post_count++;
+                    querycraft_get_template($atts['template'], array('post' => get_post()));
+
+                    // Insert CTA after every cta_interval posts, if set.
+                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
+                        querycraft_get_cta($atts['cta_template']);
+                    }
                 }
+
+                /**
+                 * After Loop Hook for Normal Loop.
+                 */
+                do_action('querycraft_after_loop', $atts, $query);
+
                 echo '</ul>';
                 wp_reset_postdata();
             }
@@ -150,11 +189,9 @@ class QueryCraft
                 break;
 
             case 'infinite_scroll':
-                // We no longer rely on the infinite scroll pagination class to output anything.
-                // It's handled above. So let's skip calling it or call it and let it return ''.
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-infinite-scroll-pagination.php';
                 $pagination = new QueryCraft_Infinite_Scroll_Pagination($atts);
-                echo $pagination->render($query); // This will return ''
+                echo $pagination->render($query); // This returns an empty string.
                 break;
 
             case 'prev_next':
