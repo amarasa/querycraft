@@ -85,6 +85,46 @@ class QueryCraft
             'offset'        => 0,
         ), $atts, 'load');
 
+        // --- Pre-check for the Template module ---
+        // If the specified template doesn't exist, fall back to "title".
+        $template_exists = false;
+        if (! empty($atts['template'])) {
+            $located = locate_template('querycraft/templates/' . $atts['template'] . '.php');
+            if (! $located) {
+                $located = QUERYCRAFT_PLUGIN_DIR . 'templates/' . $atts['template'] . '.php';
+            }
+            if (file_exists($located)) {
+                $template_exists = true;
+            }
+        }
+        if (! $template_exists) {
+            $atts['template'] = 'title';
+        }
+
+        // --- Pre-check for the CTA module (if provided) ---
+        // For file-based CTAs: if the file doesn't exist, set to empty.
+        // For post-based CTAs: if the post doesn't exist or isn't published, set to empty.
+        if (! empty($atts['cta_template'])) {
+            if (strpos($atts['cta_template'], 'post:') !== 0) {
+                // File-based CTA: remove "file:" prefix if present.
+                $cta_name = (strpos($atts['cta_template'], 'file:') === 0)
+                    ? substr($atts['cta_template'], 5)
+                    : $atts['cta_template'];
+                $cta_file = locate_template('querycraft/cta/' . $cta_name . '.php');
+                if (! $cta_file || ! file_exists($cta_file)) {
+                    // If the file doesn't exist, disable CTA.
+                    $atts['cta_template'] = '';
+                }
+            } elseif (strpos($atts['cta_template'], 'post:') === 0) {
+                $post_id = intval(substr($atts['cta_template'], 5));
+                $cta_post = get_post($post_id);
+                if (! $cta_post || $cta_post->post_status !== 'publish') {
+                    $atts['cta_template'] = '';
+                }
+            }
+        }
+
+        // Build query arguments.
         $query_args = QueryCraft_Query_Builder::build_query_args($atts);
         $query_args['ignore_sticky_posts'] = true;
         $query_args['no_found_rows'] = false;
@@ -131,7 +171,6 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-                    // Insert CTA if needed.
                     if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
                         $this->render_cta($atts['cta_template']);
                     }
@@ -152,7 +191,6 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-                    // Insert CTA if needed.
                     if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
                         $this->render_cta($atts['cta_template']);
                     }

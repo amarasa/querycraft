@@ -55,16 +55,16 @@ function querycraft_register_cta_post_type()
         'public'             => false,
         'publicly_queryable' => false,
         'show_ui'            => true,
-        // Make the CPT appear as a submenu under our main QueryCraft menu.
+        // Make the CPT appear as a submenu under our QueryCraft top-level menu.
         'show_in_menu'       => 'querycraft-admin',
         'query_var'          => true,
         'rewrite'            => array('slug' => 'querycraft-cta'),
         'capability_type'    => 'post',
         'has_archive'        => false,
         'hierarchical'       => false,
-        'menu_position'      => 25,
+        'menu_position'      => 20,
         'supports'           => array('title', 'editor'),
-        'show_in_rest'       => true, // Gutenberg support.
+        'show_in_rest'       => true, // Enables Gutenberg support.
     );
     register_post_type('querycraft_cta', $args);
 }
@@ -74,45 +74,113 @@ add_action('init', 'querycraft_register_cta_post_type');
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft.php';
 
 /*
- * The main plugin file remains in the global namespace.
+ * Since the main plugin file must have the plugin header at the top,
+ * we do not declare a namespace here.
  */
 
 /**
+ * Initialize QueryCraft by instantiating the namespaced main class.
+ */
+function querycraft_init()
+{
+    \QueryCraft\QueryCraft::get_instance();
+}
+add_action('plugins_loaded', 'querycraft_init');
+
+/**
+ * AJAX callback for "Load More" or "Infinite Scroll" requests.
+ */
+function querycraft_load_more_callback()
+{
+    $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
+
+    $shortcode_params = array(
+        'pt'           => 'post',
+        'display'      => 2,
+        'paged'        => 'load_more',
+        'orderby'      => 'date',
+        'order'        => 'ASC',
+        'status'       => 'publish',
+        'taxonomy'     => '',
+        'term'         => '',
+        'meta_key'     => '',
+        'meta_value'   => '',
+        'compare'      => '=',
+        'template'     => 'title',
+        'cta_template' => '',
+        'cta_interval' => 0,
+        'offset'       => 0,
+    );
+
+    if (! empty($_POST['shortcode'])) {
+        $json_string = wp_unslash($_POST['shortcode']);
+        $data        = json_decode($json_string, true);
+        if (is_array($data)) {
+            $shortcode_params = wp_parse_args($data, $shortcode_params);
+        }
+    }
+
+    require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft-query-builder.php';
+    require_once QUERYCRAFT_PLUGIN_DIR . 'includes/template-loader.php';
+    $query_args = \QueryCraft\QueryCraft_Query_Builder::build_query_args($shortcode_params);
+
+    if (isset($shortcode_params['offset']) && (int) $shortcode_params['offset'] > 0) {
+        $user_offset    = (int) $shortcode_params['offset'];
+        $posts_per_page = (int) $shortcode_params['display'];
+        $query_args['offset'] = $user_offset + (($page - 1) * $posts_per_page);
+    } else {
+        $query_args['paged'] = $page;
+    }
+
+    $query = new \WP_Query($query_args);
+
+    ob_start();
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            querycraft_get_template($shortcode_params['template'], array('post' => get_post()));
+        }
+    }
+    $posts_html = ob_get_clean();
+    wp_reset_postdata();
+
+    wp_send_json_success(array('posts' => $posts_html));
+}
+add_action('wp_ajax_querycraft_load_more', 'querycraft_load_more_callback');
+add_action('wp_ajax_nopriv_querycraft_load_more', 'querycraft_load_more_callback');
+
+/**
  * Create the main admin menu for QueryCraft.
- * This top-level menu will have the following submenus:
- * - Shortcode Builder (the main page)
- * - CTAs (from the CPT registration)
- * - Documentation
+ * The desired structure is:
+ * - Top-level: "QueryCraft"
+ *   - Submenu: "CTAs" (from the custom post type)
+ *   - Submenu: "Shortcode Builder"
+ *   - Submenu: "Documentation"
  */
 function querycraft_add_admin_menu()
 {
     // Create the top-level menu.
     add_menu_page(
-        'QueryCraft',                      // Page title.
-        'QueryCraft',                      // Menu title.
-        'manage_options',                  // Capability.
-        'querycraft-admin',                // Menu slug.
+        'QueryCraft',                     // Page title.
+        'QueryCraft',                     // Menu title.
+        'manage_options',                 // Capability.
+        'querycraft-admin',               // Menu slug.
         'querycraft_render_shortcode_generator_page', // Callback.
-        'dashicons-admin-customizer',      // Icon.
-        26                                 // Position.
+        'dashicons-admin-customizer',     // Icon.
+        26                                // Position.
     );
-    // Add a submenu for Shortcode Builder (points to the same page as the top-level).
+    // Remove the duplicate submenu automatically added.
+    remove_submenu_page('querycraft-admin', 'querycraft-admin');
+    // Add submenu for Shortcode Builder.
     add_submenu_page(
         'querycraft-admin',
         'Shortcode Builder',
         'Shortcode Builder',
         'manage_options',
-        'querycraft-admin',
+        'querycraft-shortcode-builder',
         'querycraft_render_shortcode_generator_page'
     );
-}
-add_action('admin_menu', 'querycraft_add_admin_menu');
-
-/**
- * Add a submenu for Developer Documentation.
- */
-function querycraft_add_documentation_page()
-{
+    // Add submenu for Documentation.
     add_submenu_page(
         'querycraft-admin',
         'Documentation',
@@ -122,7 +190,7 @@ function querycraft_add_documentation_page()
         'querycraft_render_documentation_page'
     );
 }
-add_action('admin_menu', 'querycraft_add_documentation_page');
+add_action('admin_menu', 'querycraft_add_admin_menu');
 
 /**
  * Render the Shortcode Builder page.
@@ -209,8 +277,8 @@ function querycraft_move_or_copy($source, $destination)
 }
 
 /**
- * On plugin activation, create necessary directories in the active theme.
- * For CTAs, we no longer use a plugin folder but still create a default physical CTA if needed.
+ * On plugin activation, create the 'querycraft' directories in the active theme
+ * and add a sample CTA file (or restore them from backup if available).
  */
 function querycraft_on_activation()
 {
@@ -235,7 +303,7 @@ function querycraft_on_activation()
         if (! file_exists($theme_qc . '/templates')) {
             wp_mkdir_p($theme_qc . '/templates');
         }
-        // For physical CTAs, ensure a cta folder exists.
+        // Ensure a CTA folder exists for physical CTAs.
         $cta_folder = $theme_qc . '/cta';
         if (! file_exists($cta_folder)) {
             wp_mkdir_p($cta_folder);
@@ -262,7 +330,8 @@ function querycraft_on_activation()
 register_activation_hook(__FILE__, 'querycraft_on_activation');
 
 /**
- * On plugin deactivation, back up the 'querycraft' folder from the active theme and then remove it.
+ * On plugin deactivation, back up the 'querycraft' folder from the active theme
+ * and then remove it.
  */
 function querycraft_on_deactivation()
 {
