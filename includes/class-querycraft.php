@@ -83,9 +83,12 @@ class QueryCraft
             'cta_template'  => '',
             'cta_interval'  => 0,
             'offset'        => 0,
+            // Exclusion attributes:
+            'excluded_taxonomy' => '',
+            'excluded_term'     => '',
         ), $atts, 'load');
 
-        // --- Pre-check for the Template module ---
+        // --- Template Pre-check ---
         // If the specified template doesn't exist, fall back to "title".
         $template_exists = false;
         if (! empty($atts['template'])) {
@@ -101,18 +104,16 @@ class QueryCraft
             $atts['template'] = 'title';
         }
 
-        // --- Pre-check for the CTA module (if provided) ---
-        // For file-based CTAs: if the file doesn't exist, set to empty.
-        // For post-based CTAs: if the post doesn't exist or isn't published, set to empty.
+        // --- CTA Pre-check ---
+        // For file-based CTAs (or if no prefix is provided), check if the file exists.
+        // For post-based CTAs, check if the post exists and is published.
         if (! empty($atts['cta_template'])) {
             if (strpos($atts['cta_template'], 'post:') !== 0) {
-                // File-based CTA: remove "file:" prefix if present.
                 $cta_name = (strpos($atts['cta_template'], 'file:') === 0)
                     ? substr($atts['cta_template'], 5)
                     : $atts['cta_template'];
                 $cta_file = locate_template('querycraft/cta/' . $cta_name . '.php');
                 if (! $cta_file || ! file_exists($cta_file)) {
-                    // If the file doesn't exist, disable CTA.
                     $atts['cta_template'] = '';
                 }
             } elseif (strpos($atts['cta_template'], 'post:') === 0) {
