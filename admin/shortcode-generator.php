@@ -2,392 +2,483 @@
 
 namespace QueryCraft\Admin;
 
-/**
- * QueryCraft Shortcode Generator
- *
- * This page allows users to configure QueryCraft options and generate a shortcode.
- *
- * @package QueryCraft
- */
-
-// Prevent direct access.
 if (! defined('ABSPATH')) {
     exit;
 }
 
-// Check user capability.
+/**
+ * Example: QueryCraft Shortcode Generator with Tabs, Checkboxes, and Radio Inputs
+ *
+ * 1) The left column is ~2/3 width, containing tabbed sections:
+ *    - General Settings
+ *    - Taxonomy Filters
+ *    - CTA Options
+ *    - Meta Query
+ * 2) The right column is ~1/3 width, sticky, displaying the generated shortcode.
+ * 3) Post Type & Post Status use styled checkboxes.
+ * 4) Pagination Type, Order By, Order use styled radio buttons.
+ */
+
+// Check capability.
 if (! current_user_can('manage_options')) {
     wp_die(__('You do not have sufficient permissions to access this page.'));
 }
 
-/**
- * Get available templates from both theme and plugin.
- *
- * For 'templates', this returns an array of physical file template names.
- * For 'cta', it returns an associative array combining physical file CTAs and CTAs from the CPT.
- *
- * @param string $subdir Directory (e.g. 'templates' or 'cta').
- * @return array
+/** 
+ * Example helper function to retrieve CTA templates, post types, etc. 
+ * Adjust as needed to match your actual plugin code.
  */
 function querycraft_get_available_templates($subdir)
 {
-    if ($subdir === 'cta') {
-        $templates = array();
-        // Physical file CTAs.
-        $theme_dir = get_stylesheet_directory() . '/querycraft/cta';
-        if (is_dir($theme_dir)) {
-            foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
-                $name = basename($file, '.php');
-                $templates["file:" . $name] = ucfirst($name) . ' (Physical File)';
-            }
-        }
-        // CTAs from the custom post type.
-        $cta_posts = get_posts(array(
-            'post_type'      => 'querycraft_cta',
-            'posts_per_page' => -1,
-            'post_status'    => 'publish',
-        ));
-        if (! empty($cta_posts)) {
-            foreach ($cta_posts as $cta_post) {
-                $templates["post:" . $cta_post->ID] = get_the_title($cta_post) . ' (Post Type)';
-            }
-        }
-        return $templates;
-    } elseif ($subdir === 'templates') {
-        $templates = array();
-        // Theme overrides.
-        $theme_dir = get_stylesheet_directory() . '/querycraft/' . $subdir;
-        if (is_dir($theme_dir)) {
-            foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
-                $templates[] = basename($file, '.php');
-            }
-        }
-        // Plugin defaults.
-        $plugin_dir = QUERYCRAFT_PLUGIN_DIR . 'templates';
-        if (is_dir($plugin_dir)) {
-            foreach (glob(trailingslashit($plugin_dir) . '*.php') as $file) {
-                $templates[] = basename($file, '.php');
-            }
-        }
-        return array_unique($templates);
-    }
-    return array();
+    // ...
+    // Return an array or associative array of template names.
 }
 
-// Get available post types.
-$post_types = get_post_types(array('public' => true), 'objects');
+// Fetch data for your form.
+$post_types          = get_post_types(array('public' => true), 'objects');
+$available_cta_temps = querycraft_get_available_templates('cta');
+$statuses            = get_post_statuses();
+$taxonomies          = get_taxonomies(array('public' => true), 'objects');
 
-// Get available templates.
+// If you have a function to get your default "templates" array, call it here:
 $available_templates = querycraft_get_available_templates('templates');
 
-// Get available CTA templates.
-$available_cta_templates = querycraft_get_available_templates('cta');
-
-// Get available post statuses.
-$statuses = get_post_statuses();
-
-// Get public taxonomies.
-$taxonomies = get_taxonomies(array('public' => true), 'objects');
 ?>
+<div class="qc-builder-wrap">
+    <h1>QueryCraft Shortcode Builder</h1>
+    <p class="description">Configure your QueryCraft options below. The generated shortcode will appear on the right.</p>
 
-<div class="qc-container">
-    <h1>QueryCraft Shortcode Generator</h1>
-    <p>Configure your QueryCraft options below and copy the generated shortcode.</p>
+    <div class="qc-builder-columns">
+        <!-- LEFT COLUMN (2/3): Tabbed Sections -->
+        <div class="qc-builder-left">
+            <!-- TAB NAVIGATION -->
+            <ul class="qc-tabs-nav">
+                <li class="qc-tab-nav-item active" data-tab="qc-tab-general">General Settings</li>
+                <li class="qc-tab-nav-item" data-tab="qc-tab-taxonomy">Taxonomy Filters</li>
+                <li class="qc-tab-nav-item" data-tab="qc-tab-cta">CTA Options</li>
+                <li class="qc-tab-nav-item" data-tab="qc-tab-meta">Meta Query</li>
+            </ul>
 
-    <form id="querycraft-shortcode-generator">
-        <table class="form-table">
-            <!-- Post Types -->
-            <tr>
-                <th scope="row"><label for="qc-post-type">Post Type</label></th>
-                <td>
-                    <select name="qc_post_type[]" id="qc-post-type" multiple>
-                        <?php foreach ($post_types as $pt) : ?>
-                            <option value="<?php echo esc_attr($pt->name); ?>" <?php selected('post', $pt->name); ?>>
-                                <?php echo esc_html($pt->labels->singular_name); ?> (<?php echo esc_html($pt->name); ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Select one or more post types. Hold Ctrl/Cmd to select multiple.</p>
-                </td>
-            </tr>
-            <!-- Posts Per Page -->
-            <tr>
-                <th scope="row"><label for="qc-display">Posts Per Page</label></th>
-                <td>
-                    <input name="qc_display" type="number" id="qc-display" value="6" class="small-text" />
-                    <p class="description">Number of posts per page.</p>
-                </td>
-            </tr>
-            <!-- Pagination Type -->
-            <tr>
-                <th scope="row"><label for="qc-paged">Pagination Type</label></th>
-                <td>
-                    <select name="qc_paged" id="qc-paged">
-                        <option value="numbered">Numbered</option>
-                        <option value="load_more">Load More</option>
-                        <option value="infinite_scroll">Infinite Scroll</option>
-                        <option value="prev_next">Prev/Next</option>
-                    </select>
-                    <p class="description">Select the type of pagination.</p>
-                </td>
-            </tr>
-            <!-- Template -->
-            <tr>
-                <th scope="row"><label for="qc-template">Template</label></th>
-                <td>
-                    <select name="qc_template" id="qc-template">
-                        <?php foreach ($available_templates as $template) : ?>
-                            <option value="<?php echo esc_attr($template); ?>">
-                                <?php echo esc_html(ucfirst($template)); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Select the template for rendering posts.</p>
-                </td>
-            </tr>
-            <!-- CTA Template -->
-            <tr>
-                <th scope="row"><label for="qc-cta-template">CTA Template</label></th>
-                <td>
-                    <select name="qc_cta_template" id="qc-cta-template">
-                        <option value="">None</option>
-                        <?php foreach ($available_cta_templates as $value => $label) : ?>
-                            <option value="<?php echo esc_attr($value); ?>">
-                                <?php echo esc_html($label); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Select a CTA template. (Physical file CTAs come from your theme's querycraft/cta folder and CTAs from the custom post type are built with Gutenberg.)</p>
-                </td>
-            </tr>
-            <!-- CTA Interval -->
-            <tr>
-                <th scope="row"><label for="qc-cta-interval">CTA Interval</label></th>
-                <td>
-                    <input name="qc_cta_interval" type="number" id="qc-cta-interval" value="0" class="small-text" />
-                    <p class="description">Insert CTA after every N posts (set 0 to disable).</p>
-                </td>
-            </tr>
-            <!-- Excluded Taxonomy -->
-            <tr>
-                <th scope="row"><label for="qc-excluded-taxonomy">Excluded Taxonomy</label></th>
-                <td>
-                    <select name="qc_excluded_taxonomy" id="qc-excluded-taxonomy">
-                        <option value="">None</option>
-                        <?php foreach ($taxonomies as $tax): ?>
-                            <option value="<?php echo esc_attr($tax->name); ?>">
-                                <?php echo esc_html($tax->label); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Select a taxonomy to exclude posts from.</p>
-                </td>
-            </tr>
-            <!-- Excluded Term -->
-            <tr>
-                <th scope="row"><label for="qc-excluded-term">Excluded Term</label></th>
-                <td>
-                    <select name="qc_excluded_term" id="qc-excluded-term">
-                        <option value="">None</option>
-                    </select>
-                    <p class="description">Select a term to exclude posts from. Options will load based on the selected excluded taxonomy.</p>
-                </td>
-            </tr>
-            <!-- Offset -->
-            <tr>
-                <th scope="row"><label for="qc-offset">Offset</label></th>
-                <td>
-                    <input name="qc_offset" type="number" id="qc-offset" value="0" class="small-text" />
-                    <p class="description">Number of posts to skip before starting the query.</p>
-                </td>
-            </tr>
-            <!-- Order By -->
-            <tr>
-                <th scope="row"><label for="qc-orderby">Order By</label></th>
-                <td>
-                    <select name="qc_orderby" id="qc-orderby">
-                        <option value="date">Date</option>
-                        <option value="title">Title</option>
-                    </select>
-                    <p class="description">Select order by field.</p>
-                </td>
-            </tr>
-            <!-- Order -->
-            <tr>
-                <th scope="row"><label for="qc-order">Order</label></th>
-                <td>
-                    <select name="qc_order" id="qc-order">
-                        <option value="DESC">Newest first</option>
-                        <option value="ASC">Oldest first</option>
-                    </select>
-                    <p class="description">Select sort order.</p>
-                </td>
-            </tr>
-            <!-- Status -->
-            <tr>
-                <th scope="row"><label for="qc-status">Status</label></th>
-                <td>
-                    <select name="qc_status[]" id="qc-status" multiple>
-                        <?php foreach ($statuses as $status => $label): ?>
-                            <option value="<?php echo esc_attr($status); ?>" <?php selected('publish', $status); ?>>
-                                <?php echo esc_html($label); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Select one or more post statuses.</p>
-                </td>
-            </tr>
-            <!-- Taxonomy -->
-            <tr>
-                <th scope="row"><label for="qc-taxonomy">Taxonomy</label></th>
-                <td>
-                    <select name="qc_taxonomy" id="qc-taxonomy">
-                        <option value="">None</option>
-                        <?php foreach ($taxonomies as $tax): ?>
-                            <option value="<?php echo esc_attr($tax->name); ?>">
-                                <?php echo esc_html($tax->label); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="description">Select a taxonomy to filter posts.</p>
-                </td>
-            </tr>
-            <!-- Term -->
-            <tr>
-                <th scope="row"><label for="qc-term">Term</label></th>
-                <td>
-                    <select name="qc_term" id="qc-term">
-                        <option value="">None</option>
-                    </select>
-                    <p class="description">Select a term. Options will load based on the selected taxonomy.</p>
-                </td>
-            </tr>
-        </table>
+            <!-- TAB CONTENT WRAPPER -->
+            <form id="querycraft-shortcode-generator">
+                <div class="qc-tabs-content">
 
-        <h2>Generated Shortcode</h2>
-        <textarea id="qc-shortcode-output" rows="3" readonly style="width:100%;"></textarea>
-        <p>
-            <button type="button" id="qc-copy-btn" class="button">Copy Shortcode</button>
-        </p>
-    </form>
-</div>
+                    <!-- GENERAL SETTINGS TAB -->
+                    <div class="qc-tab-panel active" id="qc-tab-general">
+                        <h2>General Settings</h2>
+
+                        <!-- Post Type (checkboxes) -->
+                        <div class="qc-field-group">
+                            <label><strong>Post Type</strong></label>
+                            <p class="description">Select one or more post types.</p>
+                            <div class="qc-checkbox-grid">
+                                <?php foreach ($post_types as $pt) : ?>
+                                    <label class="qc-checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            name="qc_post_type[]"
+                                            value="<?php echo esc_attr($pt->name); ?>"
+                                            <?php checked($pt->name === 'post'); ?> />
+                                        <span><?php echo esc_html($pt->labels->singular_name); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Posts Per Page -->
+                        <div class="qc-field-group">
+                            <label for="qc-display"><strong>Posts Per Page</strong></label>
+                            <input name="qc_display" type="number" id="qc-display" value="6" class="small-text" />
+                        </div>
+
+                        <!-- Pagination Type (radio) -->
+                        <div class="qc-field-group">
+                            <label><strong>Pagination Type</strong></label>
+                            <div class="qc-radio-grid">
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_paged" value="numbered" checked />
+                                    <span>Numbered</span>
+                                </label>
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_paged" value="load_more" />
+                                    <span>Load More</span>
+                                </label>
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_paged" value="infinite_scroll" />
+                                    <span>Infinite Scroll</span>
+                                </label>
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_paged" value="prev_next" />
+                                    <span>Prev/Next</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Template (select) -->
+                        <div class="qc-field-group">
+                            <label for="qc-template"><strong>Template</strong></label>
+                            <select name="qc_template" id="qc-template">
+                                <?php foreach ($available_templates as $template) : ?>
+                                    <option value="<?php echo esc_attr($template); ?>">
+                                        <?php echo esc_html(ucfirst($template)); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Order By (radio) -->
+                        <div class="qc-field-group">
+                            <label><strong>Order By</strong></label>
+                            <div class="qc-radio-grid">
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_orderby" value="date" checked />
+                                    <span>Date</span>
+                                </label>
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_orderby" value="title" />
+                                    <span>Title</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Order (radio) -->
+                        <div class="qc-field-group">
+                            <label><strong>Order</strong></label>
+                            <div class="qc-radio-grid">
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_order" value="DESC" checked />
+                                    <span>DESC (Newest First)</span>
+                                </label>
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_order" value="ASC" />
+                                    <span>ASC (Oldest First)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Post Status (checkboxes) -->
+                        <div class="qc-field-group">
+                            <label><strong>Post Status</strong></label>
+                            <p class="description">Select one or more statuses.</p>
+                            <div class="qc-checkbox-grid">
+                                <?php foreach ($statuses as $status => $label) : ?>
+                                    <label class="qc-checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            name="qc_status[]"
+                                            value="<?php echo esc_attr($status); ?>"
+                                            <?php checked($status === 'publish'); ?> />
+                                        <span><?php echo esc_html($label); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Offset -->
+                        <div class="qc-field-group">
+                            <label for="qc-offset"><strong>Offset</strong></label>
+                            <input name="qc_offset" type="number" id="qc-offset" value="0" class="small-text" />
+                        </div>
+                    </div><!-- /#qc-tab-general -->
+
+                    <!-- TAXONOMY FILTERS TAB -->
+                    <div class="qc-tab-panel" id="qc-tab-taxonomy">
+                        <h2>Taxonomy Filters</h2>
+
+                        <div class="qc-field-group">
+                            <label for="qc-taxonomy"><strong>Include Taxonomy</strong></label>
+                            <select name="qc_taxonomy" id="qc-taxonomy">
+                                <option value="">None</option>
+                                <?php foreach ($taxonomies as $tax) : ?>
+                                    <option value="<?php echo esc_attr($tax->name); ?>">
+                                        <?php echo esc_html($tax->label); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="qc-field-group">
+                            <label for="qc-term"><strong>Include Term</strong></label>
+                            <select name="qc_term" id="qc-term">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                        <hr />
+                        <div class="qc-field-group">
+                            <label for="qc-excluded-taxonomy"><strong>Exclude Taxonomy</strong></label>
+                            <select name="qc_excluded_taxonomy" id="qc-excluded-taxonomy">
+                                <option value="">None</option>
+                                <?php foreach ($taxonomies as $tax) : ?>
+                                    <option value="<?php echo esc_attr($tax->name); ?>">
+                                        <?php echo esc_html($tax->label); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="qc-field-group">
+                            <label for="qc-excluded-term"><strong>Exclude Term</strong></label>
+                            <select name="qc_excluded_term" id="qc-excluded-term">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                    </div><!-- /#qc-tab-taxonomy -->
+
+                    <!-- CTA OPTIONS TAB -->
+                    <div class="qc-tab-panel" id="qc-tab-cta">
+                        <h2>CTA Options</h2>
+                        <div class="qc-field-group">
+                            <label for="qc-cta-template"><strong>CTA Template</strong></label>
+                            <select name="qc_cta_template" id="qc-cta-template">
+                                <option value="">None</option>
+                                <?php foreach ($available_cta_temps as $value => $label) : ?>
+                                    <option value="<?php echo esc_attr($value); ?>">
+                                        <?php echo esc_html($label); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="qc-field-group">
+                            <label for="qc-cta-interval"><strong>CTA Interval</strong></label>
+                            <input name="qc_cta_interval" type="number" id="qc-cta-interval" value="0" class="small-text" />
+                        </div>
+                    </div><!-- /#qc-tab-cta -->
+
+                    <!-- META QUERY TAB -->
+                    <div class="qc-tab-panel" id="qc-tab-meta">
+                        <h2>Meta Query</h2>
+                        <div class="qc-field-group">
+                            <label for="qc-meta-key"><strong>Meta Key</strong></label>
+                            <input name="qc_meta_key" type="text" id="qc-meta-key" value="" />
+                        </div>
+                        <div class="qc-field-group">
+                            <label for="qc-meta-value"><strong>Meta Value</strong></label>
+                            <input name="qc_meta_value" type="text" id="qc-meta-value" value="" />
+                        </div>
+                        <div class="qc-field-group">
+                            <label for="qc-compare"><strong>Compare Operator</strong></label>
+                            <select name="qc_compare" id="qc-compare">
+                                <option value="=">=</option>
+                                <option value="!=">!=</option>
+                                <option value=">">&gt;</option>
+                                <option value="<">&lt;</option>
+                                <option value=">=">&gt;=</option>
+                                <option value="<=">&lt;=</option>
+                            </select>
+                        </div>
+                    </div><!-- /#qc-tab-meta -->
+
+                </div><!-- /.qc-tabs-content -->
+            </form>
+        </div><!-- /.qc-builder-left -->
+
+        <!-- RIGHT COLUMN (1/3): Sticky Shortcode Output -->
+        <div class="qc-builder-right">
+            <div class="qc-sticky-box">
+                <h2>Shortcode Output</h2>
+                <p class="description">Copy this shortcode and paste it wherever you want your listing to appear.</p>
+                <textarea id="qc-shortcode-output" rows="6" readonly></textarea>
+                <button type="button" id="qc-copy-btn" class="button button-primary">Copy Shortcode</button>
+            </div>
+        </div><!-- /.qc-builder-right -->
+    </div><!-- /.qc-builder-columns -->
+</div><!-- /.qc-builder-wrap -->
 
 <style>
-    /* Basic styling for the shortcode generator admin page */
-    body {
-        background: #f1f1f1;
-        font-family: sans-serif;
-        margin: 0;
+    /* --- Layout & Container Styles --- */
+    .qc-builder-wrap {
+        margin: 20px;
         padding: 20px;
-    }
-
-    .qc-container {
-        max-width: 800px;
-        margin: 0 auto;
         background: #fff;
-        padding: 20px;
         border: 1px solid #ddd;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         border-radius: 4px;
     }
 
-    .qc-container h1,
-    .qc-container h2 {
-        text-align: center;
-        color: #333;
+    .qc-builder-wrap h1 {
+        margin-top: 0;
+        font-size: 24px;
     }
 
-    .qc-container .form-table {
-        width: 100%;
-        margin-bottom: 20px;
-        border-collapse: collapse;
+    .qc-builder-columns {
+        display: flex;
+        gap: 20px;
     }
 
-    .qc-container .form-table th,
-    .qc-container .form-table td {
-        padding: 10px;
-        vertical-align: top;
+    .qc-builder-left {
+        flex: 2;
+        /* ~ 2/3 width */
     }
 
-    .qc-container .form-table th {
-        text-align: left;
-        font-weight: bold;
-        color: #555;
-        width: 30%;
+    .qc-builder-right {
+        flex: 1;
+        /* ~ 1/3 width */
+        position: relative;
     }
 
-    .qc-container input[type="text"],
-    .qc-container input[type="number"],
-    .qc-container select,
-    .qc-container textarea {
-        width: 100%;
-        padding: 8px;
-        font-size: 14px;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-        box-sizing: border-box;
+    .qc-sticky-box {
+        position: sticky;
+        top: 20px;
+        padding: 15px;
+        background: #fafafa;
+        border: 1px solid #ddd;
+        border-radius: 4px;
     }
 
-    .qc-container textarea {
-        resize: vertical;
+    /* --- Tab Navigation --- */
+    .qc-tabs-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px;
+        display: flex;
+        border-bottom: 1px solid #ccc;
     }
 
-    .qc-container .button {
-        padding: 10px 20px;
-        font-size: 14px;
-        border: none;
-        background: #0073aa;
-        color: #fff;
-        border-radius: 3px;
-        cursor: pointer;
-        transition: background 0.3s ease;
-    }
-
-    .qc-container .button:hover {
-        background: #006799;
-        color: #fff;
-    }
-
-    .qc-container .description {
-        font-size: 12px;
-        color: #777;
-        margin-top: 4px;
-    }
-
-    .qc-notice {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background: #32373c;
-        color: #fff;
+    .qc-tab-nav-item {
         padding: 10px 15px;
-        border-radius: 3px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        z-index: 9999;
-        opacity: 0.9;
+        margin-right: 2px;
+        cursor: pointer;
+        background: #eee;
+        border: 1px solid #ccc;
+        border-bottom: none;
+        border-radius: 4px 4px 0 0;
+    }
+
+    .qc-tab-nav-item.active {
+        background: #fff;
+        border-bottom: 1px solid #fff;
+        font-weight: bold;
+    }
+
+    /* --- Tab Panels --- */
+    .qc-tabs-content {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 4px 4px 4px;
+        padding: 20px;
+    }
+
+    .qc-tab-panel {
+        display: none;
+    }
+
+    .qc-tab-panel.active {
+        display: block;
+    }
+
+    /* --- Field Group Styles --- */
+    .qc-field-group {
+        margin-bottom: 20px;
+    }
+
+    .qc-field-group label {
+        display: inline-block;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+
+    .qc-field-group .description {
+        margin-top: 3px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .small-text {
+        width: 80px;
+    }
+
+    /* --- Checkboxes & Radios (simple styling) --- */
+    .qc-checkbox-grid,
+    .qc-radio-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 15px;
+        margin-top: 5px;
+    }
+
+    .qc-checkbox-label,
+    .qc-radio-label {
+        display: inline-flex;
+        align-items: center;
+        background: #f9f9f9;
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .qc-checkbox-label:hover,
+    .qc-radio-label:hover {
+        background: #eee;
+    }
+
+    .qc-checkbox-label input[type="checkbox"],
+    .qc-radio-label input[type="radio"] {
+        margin-right: 5px;
+    }
+
+    /* --- Shortcode Output Styles --- */
+    #qc-shortcode-output {
+        width: 100%;
+        font-family: monospace;
         font-size: 14px;
+        margin-bottom: 10px;
     }
 </style>
 
 <script type="text/javascript">
     jQuery(document).ready(function($) {
-        // Function to generate the shortcode string from the form values.
+
+        // TAB SWITCHING LOGIC
+        $('.qc-tab-nav-item').on('click', function() {
+            // Switch active class on tab nav
+            $('.qc-tab-nav-item').removeClass('active');
+            $(this).addClass('active');
+            // Show the corresponding tab panel
+            var tabID = $(this).data('tab');
+            $('.qc-tab-panel').removeClass('active');
+            $('#' + tabID).addClass('active');
+        });
+
+        // GATHER & GENERATE SHORTCODE
         function generateShortcode() {
-            var postTypes = $('#qc-post-type').val();
-            var pt = (postTypes && postTypes.length > 0) ? postTypes.join(',') : 'post';
+            // POST TYPE (checkbox)
+            var postTypes = [];
+            $('input[name="qc_post_type[]"]:checked').each(function() {
+                postTypes.push($(this).val());
+            });
+            var pt = (postTypes.length > 0) ? postTypes.join(',') : 'post';
+
+            // PAGINATION TYPE
+            var paged = $('input[name="qc_paged"]:checked').val() || 'numbered';
+
+            // ORDER BY
+            var orderby = $('input[name="qc_orderby"]:checked').val() || 'date';
+
+            // ORDER
+            var order = $('input[name="qc_order"]:checked').val() || 'DESC';
+
+            // POST STATUS (checkbox)
+            var statuses = [];
+            $('input[name="qc_status[]"]:checked').each(function() {
+                statuses.push($(this).val());
+            });
+
+            // Gather all other fields
             var display = $('#qc-display').val();
-            var paged = $('#qc-paged').val();
             var template = $('#qc-template').val();
-            var cta_template = $('#qc-cta-template').val();
-            var cta_interval = $('#qc-cta-interval').val();
-            var excluded_taxonomy = $('#qc-excluded-taxonomy').val();
-            var excluded_term = $('#qc-excluded-term').val();
             var offset = $('#qc-offset').val();
-            var orderby = $('#qc-orderby').val();
-            var order = $('#qc-order').val();
-            var statuses = $('#qc-status').val();
             var taxonomy = $('#qc-taxonomy').val();
             var term = $('#qc-term').val();
+            var excluded_taxonomy = $('#qc-excluded-taxonomy').val();
+            var excluded_term = $('#qc-excluded-term').val();
+            var cta_template = $('#qc-cta-template').val();
+            var cta_interval = $('#qc-cta-interval').val();
+            var meta_key = $('#qc-meta-key').val();
+            var meta_value = $('#qc-meta-value').val();
+            var compare = $('#qc-compare').val();
+
+            // Build the shortcode
             var shortcode = '[load';
             shortcode += ' pt="' + pt + '"';
             shortcode += ' display="' + display + '"';
@@ -395,7 +486,8 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
             shortcode += ' template="' + template + '"';
             shortcode += ' orderby="' + orderby + '"';
             shortcode += ' order="' + order + '"';
-            if (statuses && statuses.length > 0) {
+
+            if (statuses.length > 0) {
                 shortcode += ' status="' + statuses.join(',') + '"';
             }
             if (taxonomy !== '') {
@@ -404,32 +496,45 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
             if (term !== '') {
                 shortcode += ' term="' + term + '"';
             }
-            if (cta_template !== '') {
-                shortcode += ' cta_template="' + cta_template + '"';
-            }
-            if (cta_interval > 0) {
-                shortcode += ' cta_interval="' + cta_interval + '"';
-            }
             if (excluded_taxonomy !== '') {
                 shortcode += ' excluded_taxonomy="' + excluded_taxonomy + '"';
             }
             if (excluded_term !== '') {
                 shortcode += ' excluded_term="' + excluded_term + '"';
             }
+            if (cta_template !== '') {
+                shortcode += ' cta_template="' + cta_template + '"';
+            }
+            if (cta_interval > 0) {
+                shortcode += ' cta_interval="' + cta_interval + '"';
+            }
+            if (meta_key !== '') {
+                shortcode += ' meta_key="' + meta_key + '"';
+            }
+            if (meta_value !== '') {
+                shortcode += ' meta_value="' + meta_value + '"';
+            }
+            if (compare !== '') {
+                shortcode += ' compare="' + compare + '"';
+            }
             if (offset !== '' && offset !== '0') {
                 shortcode += ' offset="' + offset + '"';
             }
             shortcode += ']';
+
             $('#qc-shortcode-output').val(shortcode);
         }
-        // Initial generation.
+
+        // INITIAL GENERATION
         generateShortcode();
-        // Bind change events to all inputs and selects.
+
+        // WATCH FOR CHANGES
         $('#querycraft-shortcode-generator').on('input change', 'input, select', function() {
             generateShortcode();
         });
-        // Copy shortcode to clipboard.
-        $('#qc-copy-btn').click(function() {
+
+        // COPY TO CLIPBOARD
+        $('#qc-copy-btn').on('click', function() {
             var $textarea = $('#qc-shortcode-output');
             $textarea.select();
             document.execCommand('copy');
@@ -439,7 +544,8 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 $(this).remove();
             });
         });
-        // When taxonomy changes, load corresponding terms.
+
+        // LOAD TERMS FOR "INCLUDE TAXONOMY"
         $('#qc-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-term').html('<option value="">None</option>');
@@ -464,7 +570,8 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 });
             }
         });
-        // When excluded taxonomy changes, load corresponding terms.
+
+        // LOAD TERMS FOR "EXCLUDED TAXONOMY"
         $('#qc-excluded-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-excluded-term').html('<option value="">None</option>');
