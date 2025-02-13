@@ -11,18 +11,21 @@ class QueryCraft_Query_Builder
     public static function build_query_args($atts = array())
     {
         $defaults = array(
-            'pt'         => 'post',
-            'display'    => 2,
-            'paged'      => 'numbered',
-            'orderby'    => 'date',
-            'order'      => 'DESC',
-            'status'     => 'publish',
-            'taxonomy'   => '',
-            'term'       => '',
-            'meta_key'   => '',
-            'meta_value' => '',
-            'compare'    => '=',
-            'offset'     => 0,
+            'pt'              => 'post',
+            'display'         => 2,
+            'paged'           => 'numbered',
+            'orderby'         => 'date',
+            'order'           => 'DESC',
+            'status'          => 'publish',
+            'taxonomy'        => '',
+            'term'            => '',
+            'meta_key'        => '',
+            'meta_value'      => '',
+            'compare'         => '=',
+            'offset'          => 0,
+            // New keys for excluding taxonomy:
+            'excluded_taxonomy' => '',
+            'excluded_term'     => '',
         );
 
         $parsed = shortcode_atts($defaults, $atts, 'load');
@@ -35,16 +38,26 @@ class QueryCraft_Query_Builder
             'post_status'    => array_map('sanitize_text_field', explode(',', $parsed['status'])),
         );
 
+        // Taxonomy inclusion query.
         if (! empty($parsed['taxonomy']) && ! empty($parsed['term'])) {
-            $query_args['tax_query'] = array(
-                array(
-                    'taxonomy' => sanitize_text_field($parsed['taxonomy']),
-                    'field'    => 'slug',
-                    'terms'    => array_map('sanitize_text_field', explode(',', $parsed['term'])),
-                ),
+            $query_args['tax_query'][] = array(
+                'taxonomy' => sanitize_text_field($parsed['taxonomy']),
+                'field'    => 'slug',
+                'terms'    => array_map('sanitize_text_field', explode(',', $parsed['term'])),
             );
         }
 
+        // Exclusion query.
+        if (! empty($parsed['excluded_taxonomy']) && ! empty($parsed['excluded_term'])) {
+            $query_args['tax_query'][] = array(
+                'taxonomy' => sanitize_text_field($parsed['excluded_taxonomy']),
+                'field'    => 'slug',
+                'terms'    => array_map('sanitize_text_field', explode(',', $parsed['excluded_term'])),
+                'operator' => 'NOT IN',
+            );
+        }
+
+        // Meta query.
         if (! empty($parsed['meta_key']) && '' !== $parsed['meta_value']) {
             $query_args['meta_query'] = array(
                 array(

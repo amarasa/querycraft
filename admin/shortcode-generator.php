@@ -23,17 +23,17 @@ if (! current_user_can('manage_options')) {
 /**
  * Get available templates from both theme and plugin.
  *
- * For 'templates', this function returns an array of template names (physical files).
- * For 'cta', it returns an associative array where keys are the value to use and values are the label.
+ * For 'templates', this returns an array of physical file template names.
+ * For 'cta', it returns an associative array combining physical file CTAs and CTAs from the CPT.
  *
- * @param string $subdir Directory inside the theme or plugin (e.g., 'templates' or 'cta').
- * @return array Unique list of template names.
+ * @param string $subdir Directory (e.g. 'templates' or 'cta').
+ * @return array
  */
 function querycraft_get_available_templates($subdir)
 {
     if ($subdir === 'cta') {
         $templates = array();
-        // Get physical file CTAs from theme's querycraft/cta folder.
+        // Physical file CTAs.
         $theme_dir = get_stylesheet_directory() . '/querycraft/cta';
         if (is_dir($theme_dir)) {
             foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
@@ -41,7 +41,7 @@ function querycraft_get_available_templates($subdir)
                 $templates["file:" . $name] = ucfirst($name) . ' (Physical File)';
             }
         }
-        // Get CTAs from the custom post type.
+        // CTAs from the custom post type.
         $cta_posts = get_posts(array(
             'post_type'      => 'querycraft_cta',
             'posts_per_page' => -1,
@@ -55,14 +55,14 @@ function querycraft_get_available_templates($subdir)
         return $templates;
     } elseif ($subdir === 'templates') {
         $templates = array();
-        // Get theme overrides.
+        // Theme overrides.
         $theme_dir = get_stylesheet_directory() . '/querycraft/' . $subdir;
         if (is_dir($theme_dir)) {
             foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
                 $templates[] = basename($file, '.php');
             }
         }
-        // Get plugin defaults.
+        // Plugin defaults.
         $plugin_dir = QUERYCRAFT_PLUGIN_DIR . 'templates';
         if (is_dir($plugin_dir)) {
             foreach (glob(trailingslashit($plugin_dir) . '*.php') as $file) {
@@ -77,10 +77,10 @@ function querycraft_get_available_templates($subdir)
 // Get available post types.
 $post_types = get_post_types(array('public' => true), 'objects');
 
-// Get available templates for posts.
+// Get available templates.
 $available_templates = querycraft_get_available_templates('templates');
 
-// Get available CTA templates (merged from physical files and CPT).
+// Get available CTA templates.
 $available_cta_templates = querycraft_get_available_templates('cta');
 
 // Get available post statuses.
@@ -96,7 +96,7 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
 
     <form id="querycraft-shortcode-generator">
         <table class="form-table">
-            <!-- Post Types (multi-select) -->
+            <!-- Post Types -->
             <tr>
                 <th scope="row"><label for="qc-post-type">Post Type</label></th>
                 <td>
@@ -168,6 +168,31 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                     <p class="description">Insert CTA after every N posts (set 0 to disable).</p>
                 </td>
             </tr>
+            <!-- Excluded Taxonomy -->
+            <tr>
+                <th scope="row"><label for="qc-excluded-taxonomy">Excluded Taxonomy</label></th>
+                <td>
+                    <select name="qc_excluded_taxonomy" id="qc-excluded-taxonomy">
+                        <option value="">None</option>
+                        <?php foreach ($taxonomies as $tax): ?>
+                            <option value="<?php echo esc_attr($tax->name); ?>">
+                                <?php echo esc_html($tax->label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="description">Select a taxonomy to exclude posts from.</p>
+                </td>
+            </tr>
+            <!-- Excluded Term -->
+            <tr>
+                <th scope="row"><label for="qc-excluded-term">Excluded Term</label></th>
+                <td>
+                    <select name="qc_excluded_term" id="qc-excluded-term">
+                        <option value="">None</option>
+                    </select>
+                    <p class="description">Select a term to exclude posts from. Options will load based on the selected excluded taxonomy.</p>
+                </td>
+            </tr>
             <!-- Offset -->
             <tr>
                 <th scope="row"><label for="qc-offset">Offset</label></th>
@@ -203,7 +228,7 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 <th scope="row"><label for="qc-status">Status</label></th>
                 <td>
                     <select name="qc_status[]" id="qc-status" multiple>
-                        <?php foreach ($statuses as $status => $label) : ?>
+                        <?php foreach ($statuses as $status => $label): ?>
                             <option value="<?php echo esc_attr($status); ?>" <?php selected('publish', $status); ?>>
                                 <?php echo esc_html($label); ?>
                             </option>
@@ -218,7 +243,7 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 <td>
                     <select name="qc_taxonomy" id="qc-taxonomy">
                         <option value="">None</option>
-                        <?php foreach ($taxonomies as $tax) : ?>
+                        <?php foreach ($taxonomies as $tax): ?>
                             <option value="<?php echo esc_attr($tax->name); ?>">
                                 <?php echo esc_html($tax->label); ?>
                             </option>
@@ -355,6 +380,8 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
             var template = $('#qc-template').val();
             var cta_template = $('#qc-cta-template').val();
             var cta_interval = $('#qc-cta-interval').val();
+            var excluded_taxonomy = $('#qc-excluded-taxonomy').val();
+            var excluded_term = $('#qc-excluded-term').val();
             var offset = $('#qc-offset').val();
             var orderby = $('#qc-orderby').val();
             var order = $('#qc-order').val();
@@ -382,6 +409,12 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
             }
             if (cta_interval > 0) {
                 shortcode += ' cta_interval="' + cta_interval + '"';
+            }
+            if (excluded_taxonomy !== '') {
+                shortcode += ' excluded_taxonomy="' + excluded_taxonomy + '"';
+            }
+            if (excluded_term !== '') {
+                shortcode += ' excluded_term="' + excluded_term + '"';
             }
             if (offset !== '' && offset !== '0') {
                 shortcode += ' offset="' + offset + '"';
@@ -426,6 +459,31 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                                 options += '<option value="' + term.id + '">' + term.text + '</option>';
                             });
                             $('#qc-term').html(options);
+                        }
+                    }
+                });
+            }
+        });
+        // When excluded taxonomy changes, load corresponding terms.
+        $('#qc-excluded-taxonomy').on('change', function() {
+            var taxonomy = $(this).val();
+            $('#qc-excluded-term').html('<option value="">None</option>');
+            if (taxonomy !== '') {
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'GET',
+                    dataType: 'json',
+                    data: {
+                        action: 'querycraft_get_terms',
+                        taxonomy: taxonomy
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            var options = '<option value="">None</option>';
+                            $.each(response.data, function(i, term) {
+                                options += '<option value="' + term.id + '">' + term.text + '</option>';
+                            });
+                            $('#qc-excluded-term').html(options);
                         }
                     }
                 });
