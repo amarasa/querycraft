@@ -2,48 +2,86 @@
 
 namespace QueryCraft\Admin;
 
+/**
+ * QueryCraft Shortcode Generator with Tabs, Checkboxes, and Radio Inputs
+ *
+ * This page allows users to configure QueryCraft options and generate a shortcode.
+ *
+ * @package QueryCraft
+ */
+
+// Prevent direct access.
 if (! defined('ABSPATH')) {
     exit;
 }
 
-/**
- * Example: QueryCraft Shortcode Generator with Tabs, Checkboxes, and Radio Inputs
- *
- * 1) The left column is ~2/3 width, containing tabbed sections:
- *    - General Settings
- *    - Taxonomy Filters
- *    - CTA Options
- *    - Meta Query
- * 2) The right column is ~1/3 width, sticky, displaying the generated shortcode.
- * 3) Post Type & Post Status use styled checkboxes.
- * 4) Pagination Type, Order By, Order use styled radio buttons.
- */
-
-// Check capability.
+// Check user capability.
 if (! current_user_can('manage_options')) {
     wp_die(__('You do not have sufficient permissions to access this page.'));
 }
 
-/** 
- * Example helper function to retrieve CTA templates, post types, etc. 
- * Adjust as needed to match your actual plugin code.
+/**
+ * Get available templates from both theme and plugin.
+ *
+ * For 'cta', returns an associative array combining physical file CTAs and CTAs from the CPT.
+ * For 'templates', returns an array of physical file template names.
+ *
+ * @param string $subdir Directory (e.g. 'templates' or 'cta').
+ * @return array
  */
 function querycraft_get_available_templates($subdir)
 {
-    // ...
-    // Return an array or associative array of template names.
+    if ($subdir === 'cta') {
+        $templates = array();
+        // Physical file CTAs.
+        $theme_dir = get_stylesheet_directory() . '/querycraft/cta';
+        if (is_dir($theme_dir)) {
+            foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
+                $name = basename($file, '.php');
+                $templates["file:" . $name] = ucfirst($name) . ' (Physical File)';
+            }
+        }
+        // CTAs from the custom post type.
+        $cta_posts = get_posts(array(
+            'post_type'      => 'querycraft_cta',
+            'posts_per_page' => -1,
+            'post_status'    => 'publish',
+        ));
+        if (! empty($cta_posts)) {
+            foreach ($cta_posts as $cta_post) {
+                $templates["post:" . $cta_post->ID] = get_the_title($cta_post) . ' (Post Type)';
+            }
+        }
+        return $templates;
+    } elseif ($subdir === 'templates') {
+        $templates = array();
+        // Theme overrides.
+        $theme_dir = get_stylesheet_directory() . '/querycraft/' . $subdir;
+        if (is_dir($theme_dir)) {
+            foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
+                $templates[] = basename($file, '.php');
+            }
+        }
+        // Plugin defaults.
+        $plugin_dir = QUERYCRAFT_PLUGIN_DIR . 'templates';
+        if (is_dir($plugin_dir)) {
+            foreach (glob(trailingslashit($plugin_dir) . '*.php') as $file) {
+                $templates[] = basename($file, '.php');
+            }
+        }
+        return array_unique($templates);
+    }
+    return array();
 }
 
-// Fetch data for your form.
+// Fetch data for the form.
 $post_types          = get_post_types(array('public' => true), 'objects');
+$available_templates = querycraft_get_available_templates('templates');
 $available_cta_temps = querycraft_get_available_templates('cta');
 $statuses            = get_post_statuses();
 $taxonomies          = get_taxonomies(array('public' => true), 'objects');
-
-// If you have a function to get your default "templates" array, call it here:
-$available_templates = querycraft_get_available_templates('templates');
-
 ?>
+
 <div class="qc-builder-wrap">
     <h1>QueryCraft Shortcode Builder</h1>
     <p class="description">Configure your QueryCraft options below. The generated shortcode will appear on the right.</p>
@@ -74,11 +112,7 @@ $available_templates = querycraft_get_available_templates('templates');
                             <div class="qc-checkbox-grid">
                                 <?php foreach ($post_types as $pt) : ?>
                                     <label class="qc-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            name="qc_post_type[]"
-                                            value="<?php echo esc_attr($pt->name); ?>"
-                                            <?php checked($pt->name === 'post'); ?> />
+                                        <input type="checkbox" name="qc_post_type[]" value="<?php echo esc_attr($pt->name); ?>" <?php checked($pt->name === 'post'); ?> />
                                         <span><?php echo esc_html($pt->labels->singular_name); ?></span>
                                     </label>
                                 <?php endforeach; ?>
@@ -161,13 +195,9 @@ $available_templates = querycraft_get_available_templates('templates');
                             <label><strong>Post Status</strong></label>
                             <p class="description">Select one or more statuses.</p>
                             <div class="qc-checkbox-grid">
-                                <?php foreach ($statuses as $status => $label) : ?>
+                                <?php foreach ($statuses as $status => $label): ?>
                                     <label class="qc-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            name="qc_status[]"
-                                            value="<?php echo esc_attr($status); ?>"
-                                            <?php checked($status === 'publish'); ?> />
+                                        <input type="checkbox" name="qc_status[]" value="<?php echo esc_attr($status); ?>" <?php checked($status === 'publish'); ?> />
                                         <span><?php echo esc_html($label); ?></span>
                                     </label>
                                 <?php endforeach; ?>
@@ -184,12 +214,11 @@ $available_templates = querycraft_get_available_templates('templates');
                     <!-- TAXONOMY FILTERS TAB -->
                     <div class="qc-tab-panel" id="qc-tab-taxonomy">
                         <h2>Taxonomy Filters</h2>
-
                         <div class="qc-field-group">
                             <label for="qc-taxonomy"><strong>Include Taxonomy</strong></label>
                             <select name="qc_taxonomy" id="qc-taxonomy">
                                 <option value="">None</option>
-                                <?php foreach ($taxonomies as $tax) : ?>
+                                <?php foreach ($taxonomies as $tax): ?>
                                     <option value="<?php echo esc_attr($tax->name); ?>">
                                         <?php echo esc_html($tax->label); ?>
                                     </option>
@@ -207,7 +236,7 @@ $available_templates = querycraft_get_available_templates('templates');
                             <label for="qc-excluded-taxonomy"><strong>Exclude Taxonomy</strong></label>
                             <select name="qc_excluded_taxonomy" id="qc-excluded-taxonomy">
                                 <option value="">None</option>
-                                <?php foreach ($taxonomies as $tax) : ?>
+                                <?php foreach ($taxonomies as $tax): ?>
                                     <option value="<?php echo esc_attr($tax->name); ?>">
                                         <?php echo esc_html($tax->label); ?>
                                     </option>
@@ -229,7 +258,7 @@ $available_templates = querycraft_get_available_templates('templates');
                             <label for="qc-cta-template"><strong>CTA Template</strong></label>
                             <select name="qc_cta_template" id="qc-cta-template">
                                 <option value="">None</option>
-                                <?php foreach ($available_cta_temps as $value => $label) : ?>
+                                <?php foreach ($available_cta_temps as $value => $label): ?>
                                     <option value="<?php echo esc_attr($value); ?>">
                                         <?php echo esc_html($label); ?>
                                     </option>
@@ -386,7 +415,7 @@ $available_templates = querycraft_get_available_templates('templates');
         width: 80px;
     }
 
-    /* --- Checkboxes & Radios (simple styling) --- */
+    /* --- Checkboxes & Radios --- */
     .qc-checkbox-grid,
     .qc-radio-grid {
         display: flex;
@@ -431,10 +460,8 @@ $available_templates = querycraft_get_available_templates('templates');
 
         // TAB SWITCHING LOGIC
         $('.qc-tab-nav-item').on('click', function() {
-            // Switch active class on tab nav
             $('.qc-tab-nav-item').removeClass('active');
             $(this).addClass('active');
-            // Show the corresponding tab panel
             var tabID = $(this).data('tab');
             $('.qc-tab-panel').removeClass('active');
             $('#' + tabID).addClass('active');
@@ -442,29 +469,20 @@ $available_templates = querycraft_get_available_templates('templates');
 
         // GATHER & GENERATE SHORTCODE
         function generateShortcode() {
-            // POST TYPE (checkbox)
             var postTypes = [];
             $('input[name="qc_post_type[]"]:checked').each(function() {
                 postTypes.push($(this).val());
             });
             var pt = (postTypes.length > 0) ? postTypes.join(',') : 'post';
-
-            // PAGINATION TYPE
             var paged = $('input[name="qc_paged"]:checked').val() || 'numbered';
-
-            // ORDER BY
             var orderby = $('input[name="qc_orderby"]:checked').val() || 'date';
-
-            // ORDER
             var order = $('input[name="qc_order"]:checked').val() || 'DESC';
 
-            // POST STATUS (checkbox)
             var statuses = [];
             $('input[name="qc_status[]"]:checked').each(function() {
                 statuses.push($(this).val());
             });
 
-            // Gather all other fields
             var display = $('#qc-display').val();
             var template = $('#qc-template').val();
             var offset = $('#qc-offset').val();
@@ -478,7 +496,6 @@ $available_templates = querycraft_get_available_templates('templates');
             var meta_value = $('#qc-meta-value').val();
             var compare = $('#qc-compare').val();
 
-            // Build the shortcode
             var shortcode = '[load';
             shortcode += ' pt="' + pt + '"';
             shortcode += ' display="' + display + '"';
@@ -486,7 +503,6 @@ $available_templates = querycraft_get_available_templates('templates');
             shortcode += ' template="' + template + '"';
             shortcode += ' orderby="' + orderby + '"';
             shortcode += ' order="' + order + '"';
-
             if (statuses.length > 0) {
                 shortcode += ' status="' + statuses.join(',') + '"';
             }
@@ -525,15 +541,12 @@ $available_templates = querycraft_get_available_templates('templates');
             $('#qc-shortcode-output').val(shortcode);
         }
 
-        // INITIAL GENERATION
         generateShortcode();
 
-        // WATCH FOR CHANGES
         $('#querycraft-shortcode-generator').on('input change', 'input, select', function() {
             generateShortcode();
         });
 
-        // COPY TO CLIPBOARD
         $('#qc-copy-btn').on('click', function() {
             var $textarea = $('#qc-shortcode-output');
             $textarea.select();
@@ -545,7 +558,6 @@ $available_templates = querycraft_get_available_templates('templates');
             });
         });
 
-        // LOAD TERMS FOR "INCLUDE TAXONOMY"
         $('#qc-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-term').html('<option value="">None</option>');
@@ -571,7 +583,6 @@ $available_templates = querycraft_get_available_templates('templates');
             }
         });
 
-        // LOAD TERMS FOR "EXCLUDED TAXONOMY"
         $('#qc-excluded-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-excluded-term').html('<option value="">None</option>');
