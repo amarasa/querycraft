@@ -94,7 +94,6 @@ class QueryCraft
 
         // Determine current page by checking both 'paged' and 'page'
         $current_page = max(1, absint(get_query_var('paged')), absint(get_query_var('page')));
-        error_log("Combined current_page: $current_page");
 
         // If an offset is provided, calculate effective offset; otherwise, set paged.
         if (isset($atts['offset']) && (int)$atts['offset'] > 0) {
@@ -104,22 +103,18 @@ class QueryCraft
             if (isset($query_args['paged'])) {
                 unset($query_args['paged']);
             }
-            error_log("QueryCraft: Offset Found");
         } else {
             $posts_per_page = (int)$atts['display'];
             $query_args['offset'] = (($current_page - 1) * $posts_per_page);
             $query_args['paged'] = $current_page;
-            error_log("QueryCraft: Offset Not Found");
         }
 
-        error_log("QueryCraft: query_args = " . print_r($query_args, true));
 
         // Force WP_Query to use the correct current page.
         global $paged;
         $paged = $current_page;
 
         $query = new WP_Query($query_args);
-        error_log("QueryCraft: query = " . print_r($query, true));
 
         ob_start();
 
