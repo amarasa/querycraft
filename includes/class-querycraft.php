@@ -1,11 +1,18 @@
 <?php
 
+namespace QueryCraft;
+
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/template-loader.php';
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/cta-loader.php';
+
+use QueryCraft\Pagination\QueryCraft_Numbered_Pagination;
+use QueryCraft\Pagination\QueryCraft_Load_More_Pagination;
+use QueryCraft\Pagination\QueryCraft_Infinite_Scroll_Pagination;
+use QueryCraft\Pagination\QueryCraft_Prev_Next_Pagination;
 
 class QueryCraft
 {
@@ -22,19 +29,14 @@ class QueryCraft
 
     private function __construct()
     {
-        // Require the Query Builder.
         require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft-query-builder.php';
-
-        // Register the shortcode.
-        add_action('init', [$this, 'register_shortcodes']);
-
-        // Enqueue assets.
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('init', array($this, 'register_shortcodes'));
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
     }
 
     public function register_shortcodes()
     {
-        add_shortcode('load', [$this, 'render_shortcode']);
+        add_shortcode('load', array($this, 'render_shortcode'));
     }
 
     public function enqueue_assets()
@@ -42,35 +44,33 @@ class QueryCraft
         wp_enqueue_style(
             'querycraft-css',
             QUERYCRAFT_PLUGIN_URL . 'assets/css/querycraft.css',
-            [],
+            array(),
             QUERYCRAFT_VERSION
         );
 
         wp_enqueue_script(
             'querycraft-js',
             QUERYCRAFT_PLUGIN_URL . 'assets/js/querycraft.js',
-            ['jquery'],
+            array('jquery'),
             QUERYCRAFT_VERSION,
             true
         );
 
-        wp_localize_script('querycraft-js', 'QueryCraftData', [
+        wp_localize_script('querycraft-js', 'QueryCraftData', array(
             'ajax_url' => admin_url('admin-ajax.php'),
-        ]);
+        ));
     }
 
     public function render_shortcode($atts)
     {
-        // If we're in the block editor, return a placeholder.
         if (defined('REST_REQUEST') && REST_REQUEST) {
             return '<p>QueryCraft preview not available in the editor.</p>';
         }
 
-        // Merge shortcode attributes with defaults.
-        $atts = shortcode_atts([
+        $atts = shortcode_atts(array(
             'pt'            => 'post',
             'display'       => 2,
-            'paged'         => 'numbered', // can be 'load_more', 'infinite_scroll', etc.
+            'paged'         => 'numbered',
             'orderby'       => 'date',
             'order'         => 'ASC',
             'status'        => 'publish',
@@ -79,42 +79,37 @@ class QueryCraft
             'meta_key'      => '',
             'meta_value'    => '',
             'compare'       => '=',
-            'template'      => 'title',  // Template for rendering each post
-            'cta_template'  => '',       // CTA template (if provided)
-            'cta_interval'  => 0,        // Insert CTA after every N posts (0 means disabled)
-            'offset'        => 0,        // Number of posts to skip
-        ], $atts, 'load');
+            'template'      => 'title',
+            'cta_template'  => '',
+            'cta_interval'  => 0,
+            'offset'        => 0,
+        ), $atts, 'load');
 
-        // Build the query arguments.
         $query_args = QueryCraft_Query_Builder::build_query_args($atts);
         $query_args['ignore_sticky_posts'] = true;
         $query_args['no_found_rows'] = false;
         $query_args['cache_results'] = false;
         $query_args['suppress_filters'] = false;
 
-        // Determine current page by checking both 'paged' and 'page'
         $current_page = max(1, absint(get_query_var('paged')), absint(get_query_var('page')));
 
-        // If an offset is provided, calculate effective offset; otherwise, set paged.
-        if (isset($atts['offset']) && (int)$atts['offset'] > 0) {
-            $user_offset = (int)$atts['offset'];
-            $posts_per_page = (int)$atts['display'];
+        if (isset($atts['offset']) && (int) $atts['offset'] > 0) {
+            $user_offset    = (int) $atts['offset'];
+            $posts_per_page = (int) $atts['display'];
             $query_args['offset'] = $user_offset + (($current_page - 1) * $posts_per_page);
             if (isset($query_args['paged'])) {
                 unset($query_args['paged']);
             }
         } else {
-            $posts_per_page = (int)$atts['display'];
+            $posts_per_page = (int) $atts['display'];
             $query_args['offset'] = (($current_page - 1) * $posts_per_page);
             $query_args['paged'] = $current_page;
         }
 
-
-        // Force WP_Query to use the correct current page.
         global $paged;
         $paged = $current_page;
 
-        $query = new WP_Query($query_args);
+        $query = new \WP_Query($query_args);
 
         ob_start();
 
@@ -136,7 +131,7 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
+                    if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
                         querycraft_get_cta($atts['cta_template']);
                     }
                 }
@@ -156,7 +151,7 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
+                    if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
                         querycraft_get_cta($atts['cta_template']);
                     }
                 }
@@ -170,9 +165,7 @@ class QueryCraft
             echo '<p>No posts found.</p>';
         }
 
-        // Handle pagination modules.
-        $pagination_type = sanitize_text_field($atts['paged']);
-        switch ($pagination_type) {
+        switch ($atts['paged']) {
             case 'numbered':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-numbered-pagination.php';
                 $pagination = new QueryCraft_Numbered_Pagination();
@@ -186,7 +179,7 @@ class QueryCraft
             case 'infinite_scroll':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-infinite-scroll-pagination.php';
                 $pagination = new QueryCraft_Infinite_Scroll_Pagination($atts);
-                echo $pagination->render($query); // This returns an empty string.
+                echo $pagination->render($query);
                 break;
             case 'prev_next':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-prev-next-pagination.php';

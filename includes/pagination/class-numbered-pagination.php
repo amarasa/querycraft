@@ -1,11 +1,6 @@
 <?php
 
-/**
- * Numbered Pagination module for QueryCraft.
- *
- * This class implements QueryCraft_Pagination_Interface and outputs
- * classic numbered pagination links.
- */
+namespace QueryCraft\Pagination;
 
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -25,7 +20,6 @@ class QueryCraft_Numbered_Pagination implements QueryCraft_Pagination_Interface
      */
     public function render($query)
     {
-        // Only display pagination if there's more than one page.
         if ($query->max_num_pages <= 1) {
             return '';
         }
@@ -33,11 +27,11 @@ class QueryCraft_Numbered_Pagination implements QueryCraft_Pagination_Interface
         $current_page = max(1, get_query_var('paged', 1));
 
         $pagination_args = array(
-            'base'      => esc_url_raw(str_replace(999999999, '%#%', get_pagenum_link(999999999))),
-            'format'    => '?paged=%#%',
-            'current'   => $current_page,
-            'total'     => $query->max_num_pages,
-            'type'      => 'list',
+            'base'    => esc_url_raw(str_replace(999999999, '%#%', get_pagenum_link(999999999))),
+            'format'  => '?paged=%#%',
+            'current' => $current_page,
+            'total'   => $query->max_num_pages,
+            'type'    => 'list',
         );
 
         $pagination = paginate_links($pagination_args);

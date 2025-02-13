@@ -1,10 +1,6 @@
 <?php
 
-/**
- * Pagination Interface for QueryCraft.
- *
- * Defines the methods that all pagination classes must implement.
- */
+namespace QueryCraft\Pagination;
 
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.

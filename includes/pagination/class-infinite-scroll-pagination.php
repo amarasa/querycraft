@@ -1,4 +1,7 @@
 <?php
+
+namespace QueryCraft\Pagination;
+
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
@@ -7,7 +10,6 @@ require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-pagination-interface.php';
 
 class QueryCraft_Infinite_Scroll_Pagination implements QueryCraft_Pagination_Interface
 {
-
     protected $atts = [];
 
     public function __construct($atts = [])

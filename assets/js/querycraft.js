@@ -35,7 +35,6 @@ jQuery(document).ready(function ($) {
 			success: function (response) {
 				console.log("AJAX response (Load More):", response);
 				if (response.success) {
-					// Append new posts to the existing list
 					$(".querycraft-list").append(response.data.posts);
 					$button.data("current-page", currentPage + 1);
 					$button.text("Load More");
@@ -103,12 +102,9 @@ jQuery(document).ready(function ($) {
 				success: function (response) {
 					console.log("AJAX response (Infinite Scroll):", response);
 					if (response.success) {
-						// Append new posts directly to the same <ul>
-						// Note that .querycraft-list is inside the .querycraft-infinite-scroll container
 						$infiniteContainer
 							.find(".querycraft-list")
 							.append(response.data.posts);
-
 						$infiniteContainer.data(
 							"current-page",
 							currentPage + 1
@@ -132,4 +128,3 @@ jQuery(document).ready(function ($) {
 		}
 	});
 });
-

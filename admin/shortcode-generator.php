@@ -1,5 +1,7 @@
 <?php
 
+namespace QueryCraft\Admin;
+
 /**
  * QueryCraft Shortcode Generator
  *
@@ -181,7 +183,7 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 <th scope="row"><label for="qc-status">Status</label></th>
                 <td>
                     <select name="qc_status[]" id="qc-status" multiple>
-                        <?php foreach ($statuses as $status => $label): ?>
+                        <?php foreach ($statuses as $status => $label) : ?>
                             <option value="<?php echo esc_attr($status); ?>" <?php selected('publish', $status); ?>>
                                 <?php echo esc_html($label); ?>
                             </option>
@@ -196,7 +198,7 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 <td>
                     <select name="qc_taxonomy" id="qc-taxonomy">
                         <option value="">None</option>
-                        <?php foreach ($taxonomies as $tax): ?>
+                        <?php foreach ($taxonomies as $tax) : ?>
                             <option value="<?php echo esc_attr($tax->name); ?>">
                                 <?php echo esc_html($tax->label); ?>
                             </option>
@@ -307,7 +309,6 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
         margin-top: 4px;
     }
 
-    /* Styling for the WordPress-like notification */
     .qc-notice {
         position: fixed;
         bottom: 20px;
@@ -325,13 +326,10 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
 
 <script type="text/javascript">
     jQuery(document).ready(function($) {
-
         // Function to generate the shortcode string from the form values.
         function generateShortcode() {
-            // For post types, join the selected values with a comma.
             var postTypes = $('#qc-post-type').val();
             var pt = (postTypes && postTypes.length > 0) ? postTypes.join(',') : 'post';
-
             var display = $('#qc-display').val();
             var paged = $('#qc-paged').val();
             var template = $('#qc-template').val();
@@ -343,7 +341,6 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
             var statuses = $('#qc-status').val();
             var taxonomy = $('#qc-taxonomy').val();
             var term = $('#qc-term').val();
-
             var shortcode = '[load';
             shortcode += ' pt="' + pt + '"';
             shortcode += ' display="' + display + '"';
@@ -370,40 +367,32 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 shortcode += ' offset="' + offset + '"';
             }
             shortcode += ']';
-
             $('#qc-shortcode-output').val(shortcode);
         }
-
         // Initial generation.
         generateShortcode();
-
         // Bind change events to all inputs and selects.
         $('#querycraft-shortcode-generator').on('input change', 'input, select', function() {
             generateShortcode();
         });
-
         // Copy shortcode to clipboard.
         $('#qc-copy-btn').click(function() {
             var $textarea = $('#qc-shortcode-output');
             $textarea.select();
             document.execCommand('copy');
-
-            // Instead of an alert, show a WordPress-style notification.
             var $notice = $('<div class="qc-notice">Copied to Clipboard</div>');
             $('body').append($notice);
             $notice.delay(2000).fadeOut(500, function() {
                 $(this).remove();
             });
         });
-
         // When taxonomy changes, load corresponding terms.
         $('#qc-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
-            // Clear the term select.
             $('#qc-term').html('<option value="">None</option>');
             if (taxonomy !== '') {
                 $.ajax({
-                    url: ajaxurl, // Admin AJAX URL.
+                    url: ajaxurl,
                     type: 'GET',
                     dataType: 'json',
                     data: {

@@ -1,15 +1,7 @@
 <?php
 
-/**
- * CTA Loader for QueryCraft.
- *
- * This function locates and loads a CTA template file.
- * It first checks if a file exists in your active theme’s "querycraft/cta" folder.
- * If not, it falls back to the plugin's default CTA directory.
- *
- * @param string $cta_name Name of the CTA template (without .php extension).
- * @param array  $args     Optional variables to extract in the CTA template.
- */
+namespace QueryCraft;
+
 if (! function_exists('querycraft_get_cta')) {
     function querycraft_get_cta($cta_name, $args = array())
     {

@@ -1,6 +1,5 @@
 <?php
-
-/**
+/*
  * Plugin Name: QueryCraft
  * Plugin URI:  https://github.com/amarasa/querycraft
  * Description: A flexible shortcode-based plugin for building dynamic post queries with multiple pagination options.
@@ -25,23 +24,24 @@ if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-// Define plugin version and paths.
 define('QUERYCRAFT_VERSION', '1.0.5');
 define('QUERYCRAFT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('QUERYCRAFT_PLUGIN_URL', plugin_dir_url(__FILE__));
-
-// Define backup directory (within the plugin folder)
 define('QUERYCRAFT_BACKUP_DIR', QUERYCRAFT_PLUGIN_DIR . 'backups');
 
-// Include the main plugin class.
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft.php';
 
+/*
+ * Since the main plugin file must have the plugin header at the top,
+ * we do not declare a namespace here.
+ */
+
 /**
- * Initialize the plugin.
+ * Initialize QueryCraft by instantiating the namespaced main class.
  */
 function querycraft_init()
 {
-    QueryCraft::get_instance();
+    \QueryCraft\QueryCraft::get_instance();
 }
 add_action('plugins_loaded', 'querycraft_init');
 
@@ -52,11 +52,10 @@ function querycraft_load_more_callback()
 {
     $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
 
-    // Default shortcode params (in case none are passed).
     $shortcode_params = [
         'pt'         => 'post',
         'display'    => 2,
-        'paged'      => 'load_more', // or 'infinite_scroll'
+        'paged'      => 'load_more',
         'orderby'    => 'date',
         'order'      => 'ASC',
         'status'     => 'publish',
@@ -69,10 +68,9 @@ function querycraft_load_more_callback()
         'offset'     => 0,
     ];
 
-    // If the AJAX request includes a "shortcode" param, decode & merge it.
-    if (!empty($_POST['shortcode'])) {
+    if (! empty($_POST['shortcode'])) {
         $json_string = wp_unslash($_POST['shortcode']);
-        $data = json_decode($json_string, true);
+        $data        = json_decode($json_string, true);
         if (is_array($data)) {
             $shortcode_params = wp_parse_args($data, $shortcode_params);
         }
@@ -80,20 +78,17 @@ function querycraft_load_more_callback()
 
     require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft-query-builder.php';
     require_once QUERYCRAFT_PLUGIN_DIR . 'includes/template-loader.php';
-    $query_args = QueryCraft_Query_Builder::build_query_args($shortcode_params);
+    $query_args = \QueryCraft\QueryCraft_Query_Builder::build_query_args($shortcode_params);
 
-    // Adjust offset if provided.
-    if (isset($shortcode_params['offset']) && (int)$shortcode_params['offset'] > 0) {
-        $user_offset = (int)$shortcode_params['offset'];
-        $posts_per_page = (int)$shortcode_params['display'];
-        // Calculate a dynamic offset: user_offset + ((page - 1) * posts_per_page)
+    if (isset($shortcode_params['offset']) && (int) $shortcode_params['offset'] > 0) {
+        $user_offset    = (int) $shortcode_params['offset'];
+        $posts_per_page = (int) $shortcode_params['display'];
         $query_args['offset'] = $user_offset + (($page - 1) * $posts_per_page);
     } else {
-        // Otherwise, set paged normally.
         $query_args['paged'] = $page;
     }
 
-    $query = new WP_Query($query_args);
+    $query = new \WP_Query($query_args);
 
     ob_start();
     if ($query->have_posts()) {
@@ -110,23 +105,26 @@ function querycraft_load_more_callback()
 add_action('wp_ajax_querycraft_load_more', 'querycraft_load_more_callback');
 add_action('wp_ajax_nopriv_querycraft_load_more', 'querycraft_load_more_callback');
 
-
-
-// Add a top-level admin menu for QueryCraft.
+/**
+ * Add a top-level admin menu for the QueryCraft Shortcode Generator.
+ */
 function querycraft_add_admin_menu()
 {
     add_menu_page(
-        'QueryCraft Shortcode Generator', // Page title
-        'QueryCraft',                     // Menu title
-        'manage_options',                 // Capability required
-        'querycraft-admin',               // Menu slug
-        'querycraft_render_shortcode_generator_page', // Callback to render the page
-        'dashicons-admin-customizer',     // Dashicon icon class
-        26                                // Position in the menu (lower numbers appear higher)
+        'QueryCraft Shortcode Generator',
+        'QueryCraft',
+        'manage_options',
+        'querycraft-admin',
+        'querycraft_render_shortcode_generator_page',
+        'dashicons-admin-customizer',
+        26
     );
 }
 add_action('admin_menu', 'querycraft_add_admin_menu');
 
+/**
+ * Render the shortcode generator admin page.
+ */
 function querycraft_render_shortcode_generator_page()
 {
     include_once QUERYCRAFT_PLUGIN_DIR . 'admin/shortcode-generator.php';
@@ -135,7 +133,7 @@ function querycraft_render_shortcode_generator_page()
 /**
  * Recursively remove a directory and all its contents.
  *
- * @param string $dir Directory path to remove.
+ * @param string $dir Directory path.
  */
 function querycraft_rrmdir($dir)
 {
@@ -162,9 +160,9 @@ function querycraft_rrmdir($dir)
 }
 
 /**
- * Recursively copy files & folders from source to destination.
+ * Recursively copy files and folders from source to destination.
  *
- * @param string $source Source directory.
+ * @param string $source      Source directory.
  * @param string $destination Destination directory.
  */
 function querycraft_recursive_copy($source, $destination)
@@ -187,37 +185,33 @@ function querycraft_recursive_copy($source, $destination)
 }
 
 /**
- * Attempts to move a directory; if rename fails, falls back to a recursive copy.
+ * Attempt to move a directory; if rename fails, fall back to a recursive copy.
  *
- * @param string $source
- * @param string $destination
+ * @param string $source      Source directory.
+ * @param string $destination Destination directory.
  */
 function querycraft_move_or_copy($source, $destination)
 {
-    // Try rename first.
     if (@rename($source, $destination)) {
         return;
     }
-    // Otherwise, copy recursively.
     querycraft_recursive_copy($source, $destination);
 }
 
 /**
  * On plugin activation, create the 'querycraft' directories in the active theme
- * and add a sample CTA file, or restore them from backup if available.
+ * and add a sample CTA file (or restore them from backup if available).
  */
 function querycraft_on_activation()
 {
-    // Ensure our backup directory exists.
     if (! file_exists(QUERYCRAFT_BACKUP_DIR)) {
         wp_mkdir_p(QUERYCRAFT_BACKUP_DIR);
     }
 
     $theme_dir = get_stylesheet_directory();
-    $theme_qc = $theme_dir . '/querycraft';
+    $theme_qc  = $theme_dir . '/querycraft';
     $backup_qc = QUERYCRAFT_BACKUP_DIR . '/querycraft';
 
-    // If a backup exists, restore it.
     if (file_exists($backup_qc)) {
         if (file_exists($theme_qc)) {
             querycraft_rrmdir($theme_qc);
@@ -225,7 +219,6 @@ function querycraft_on_activation()
         querycraft_move_or_copy($backup_qc, $theme_qc);
         querycraft_rrmdir($backup_qc);
     } else {
-        // No backup exists; create fresh folder structure.
         if (! file_exists($theme_qc)) {
             wp_mkdir_p($theme_qc);
         }
@@ -258,7 +251,7 @@ register_activation_hook(__FILE__, 'querycraft_on_activation');
 
 /**
  * On plugin deactivation, back up the 'querycraft' folder from the active theme
- * to the plugin's backup directory, then remove it from the theme.
+ * and then remove it.
  */
 function querycraft_on_deactivation()
 {
@@ -270,33 +263,30 @@ function querycraft_on_deactivation()
         return;
     }
 
-    // Remove any existing backup.
     if (file_exists($backup_qc)) {
         querycraft_rrmdir($backup_qc);
     }
 
-    // Move (or copy) the theme querycraft folder to the backup.
     querycraft_move_or_copy($theme_qc, $backup_qc);
-
-    // Remove the original querycraft folder from the theme.
     querycraft_rrmdir($theme_qc);
 }
 register_deactivation_hook(__FILE__, 'querycraft_on_deactivation');
 
-
-add_action('wp_ajax_querycraft_get_terms', 'querycraft_get_terms_callback');
+/**
+ * AJAX callback to get taxonomy terms.
+ */
 function querycraft_get_terms_callback()
 {
-    if (!isset($_GET['taxonomy'])) {
+    if (! isset($_GET['taxonomy'])) {
         wp_send_json_error('No taxonomy provided');
     }
     $taxonomy = sanitize_text_field($_GET['taxonomy']);
-    $terms = get_terms([
+    $terms    = get_terms([
         'taxonomy'   => $taxonomy,
         'hide_empty' => false,
     ]);
     $options = [];
-    if (!is_wp_error($terms)) {
+    if (! is_wp_error($terms)) {
         foreach ($terms as $term) {
             $options[] = [
                 'id'   => $term->slug,
@@ -306,20 +296,27 @@ function querycraft_get_terms_callback()
     }
     wp_send_json_success($options);
 }
+add_action('wp_ajax_querycraft_get_terms', 'querycraft_get_terms_callback');
 
+/**
+ * Add a sub-menu page for Developer Documentation.
+ */
 function querycraft_add_documentation_page()
 {
     add_submenu_page(
-        'querycraft-admin',                   // Parent slug (your QueryCraft top-level menu)
-        'Developer Documentation',            // Page title
-        'Documentation',                      // Menu title
-        'manage_options',                     // Capability
-        'querycraft-documentation',           // Menu slug
-        'querycraft_render_documentation_page' // Callback function
+        'querycraft-admin',
+        'Developer Documentation',
+        'Documentation',
+        'manage_options',
+        'querycraft-documentation',
+        'querycraft_render_documentation_page'
     );
 }
 add_action('admin_menu', 'querycraft_add_documentation_page');
 
+/**
+ * Render the Developer Documentation page.
+ */
 function querycraft_render_documentation_page()
 {
     include_once QUERYCRAFT_PLUGIN_DIR . 'admin/documentation.php';

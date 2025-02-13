@@ -1,5 +1,7 @@
 <?php
 
+namespace QueryCraft\Admin;
+
 /**
  * QueryCraft Developer Documentation
  *
@@ -19,7 +21,6 @@ if (! current_user_can('manage_options')) {
 <head>
     <meta charset="UTF-8">
     <title>QueryCraft Developer Documentation</title>
-
     <!-- Highlight.js for syntax highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -152,8 +153,6 @@ if (! current_user_can('manage_options')) {
                 <li><a href="#conclusion">8. Conclusion</a></li>
             </ul>
         </div>
-
-        <!-- 1. Templating System Overview -->
         <h2 id="templating">1. Templating System Overview</h2>
         <p>QueryCraft uses a flexible templating system to render post listings. The process works as follows:</p>
         <ol>
@@ -162,8 +161,6 @@ if (! current_user_can('manage_options')) {
             <li>If no override exists, the default template in the plugin’s <code>templates/</code> folder is loaded.</li>
             <li>You can create multiple templates (e.g., <code>cards.php</code>, <code>list.php</code>, <code>blurb.php</code>) for different layouts.</li>
         </ol>
-
-        <!-- 2. CTA Integration -->
         <h2 id="cta">2. CTA Integration</h2>
         <p>QueryCraft supports automatic insertion of Call-To-Actions (CTAs) within the post loop. It works as follows:</p>
         <ol>
@@ -171,8 +168,6 @@ if (! current_user_can('manage_options')) {
             <li>CTA templates are loaded from your active theme's <code>querycraft/cta/</code> folder if available, or from the plugin’s default <code>cta/</code> folder.</li>
             <li>This allows you to easily integrate promotional content or custom elements without modifying core code.</li>
         </ol>
-
-        <!-- 3. Custom Field Filtering -->
         <h2 id="custom-fields">3. Custom Field Filtering</h2>
         <p>QueryCraft supports filtering posts by custom fields using the following shortcode parameters:</p>
         <ul>
@@ -182,35 +177,30 @@ if (! current_user_can('manage_options')) {
         </ul>
         <p>For example, to display posts where the custom field <code>rating</code> is 4 or higher:</p>
         <pre><code class="language-markup">[load pt="post" display="6" paged="numbered" template="cards" orderby="date" order="DESC" status="publish" meta_key="rating" meta_value="4" compare=">="]</code></pre>
-
-        <!-- 4. Building a Custom Template -->
         <h2 id="building-template">4. Building a Custom Template</h2>
         <p>When creating a custom template for QueryCraft, it's critical to understand the PHP scope and context in which your template is loaded:</p>
         <ul>
             <li><strong>Inside the Loop:</strong> QueryCraft calls <code>$query->the_post()</code> before including your template file. This sets up the global <code>$post</code> variable, so you can use standard WordPress functions like <code>the_title()</code>, <code>the_permalink()</code>, and <code>the_content()</code> without any additional setup.</li>
             <li><strong>Passed Variables:</strong> In addition, QueryCraft passes an array of arguments to your template (typically including the current <code>WP_Post</code> object as <code>$post</code>). This gives you direct access to the post data if needed.</li>
         </ul>
-        <p>There are two common approaches to building a template:</p>
         <h3>Example 1: Using Standard Template Tags</h3>
         <pre><code class="language-php">
 &lt;?php
 // File: title.php in your theme's querycraft/templates/ folder
 the_title('&lt;h2&gt;', '&lt;/h2&gt;');
 ?&gt;
-    </code></pre>
+        </code></pre>
         <h3>Example 2: Using the Passed <code>$post</code> Object</h3>
         <pre><code class="language-php">
 &lt;?php
 // File: custom.php in your theme's querycraft/templates/ folder
 if ( isset( $post ) ) {
-    echo '&lt;h2&gt;' . esc_html( $post-&gt;post_title ) . '&lt;/h2&gt;';
-    echo '&lt;div&gt;' . apply_filters( 'the_content', $post-&gt;post_content ) . '&lt;/div&gt;';
+    echo '&lt;h2&gt;' . esc_html( $post->post_title ) . '&lt;/h2&gt;';
+    echo '&lt;div&gt;' . apply_filters( 'the_content', $post->post_content ) . '&lt;/div&gt;';
 }
 ?&gt;
-    </code></pre>
+        </code></pre>
         <p><strong>Note:</strong> You do not need to call <code>setup_postdata()</code> in your template because QueryCraft already does that for each post in the loop.</p>
-
-        <!-- 5. Hooks and Extensibility -->
         <h2 id="hooks">5. Hooks and Extensibility</h2>
         <p>QueryCraft provides action hooks to allow you to extend or modify its output without changing core code:</p>
         <ul>
@@ -225,7 +215,7 @@ function my_querycraft_before_loop( $atts, $query ) {
 }
 add_action( 'querycraft_before_loop', 'my_querycraft_before_loop', 10, 2 );
 ?&gt;
-    </code></pre>
+        </code></pre>
         <h3>Example: After Loop Hook</h3>
         <pre><code class="language-php">
 &lt;?php
@@ -234,9 +224,7 @@ function my_querycraft_after_loop( $atts, $query ) {
 }
 add_action( 'querycraft_after_loop', 'my_querycraft_after_loop', 10, 2 );
 ?&gt;
-    </code></pre>
-
-        <!-- 6. Frequently Asked Questions (FAQs) -->
+        </code></pre>
         <h2 id="faqs">6. Frequently Asked Questions (FAQs)</h2>
         <h3>Q: How do I override a default template?</h3>
         <p><strong>A:</strong> Copy the template file (e.g., <code>cards.php</code>) from the plugin’s <code>templates/</code> folder into your active theme’s <code>querycraft/templates/</code> folder. QueryCraft will automatically use your version.</p>
@@ -244,16 +232,12 @@ add_action( 'querycraft_after_loop', 'my_querycraft_after_loop', 10, 2 );
         <p><strong>A:</strong> No. QueryCraft calls <code>$query->the_post()</code> before including your template, so the global <code>$post</code> variable is already set up for you.</p>
         <h3>Q: How can I insert a custom CTA within the post loop?</h3>
         <p><strong>A:</strong> Use the <code>cta_template</code> and <code>cta_interval</code> shortcode parameters. QueryCraft will insert the specified CTA every <code>cta_interval</code> posts by calling <code>querycraft_get_cta( $cta_template )</code>.</p>
-
-        <!-- 7. Additional Developer Tips -->
         <h2 id="tips">7. Additional Developer Tips</h2>
         <ul>
             <li>Use the action hooks (<code>querycraft_before_loop</code> and <code>querycraft_after_loop</code>) to inject additional markup or functionality without modifying core files.</li>
             <li>Test your template overrides in a staging environment before deploying to production.</li>
             <li>Review inline comments in the plugin source code for deeper insights into QueryCraft’s architecture.</li>
         </ul>
-
-        <!-- 8. Conclusion -->
         <h2 id="conclusion">8. Conclusion</h2>
         <p>This documentation serves as a comprehensive guide for developers looking to extend and customize QueryCraft. With its flexible templating system, integrated CTA features, and powerful hooks, you can create custom solutions without modifying core code. For further details, please refer to the plugin repository or contact support.</p>
     </div>

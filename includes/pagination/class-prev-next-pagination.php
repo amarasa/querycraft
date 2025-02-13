@@ -1,17 +1,11 @@
 <?php
 
-/**
- * Previous/Next Pagination module for QueryCraft.
- *
- * This class implements QueryCraft_Pagination_Interface and outputs
- * simple previous and next navigation links.
- */
+namespace QueryCraft\Pagination;
 
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-// Ensure the pagination interface is loaded.
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-pagination-interface.php';
 
 class QueryCraft_Prev_Next_Pagination implements QueryCraft_Pagination_Interface
@@ -25,7 +19,6 @@ class QueryCraft_Prev_Next_Pagination implements QueryCraft_Pagination_Interface
      */
     public function render($query)
     {
-        // Only display pagination if there's more than one page.
         if ($query->max_num_pages <= 1) {
             return '';
         }

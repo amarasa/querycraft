@@ -1,4 +1,7 @@
 <?php
+
+namespace QueryCraft\Pagination;
+
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
@@ -8,13 +11,24 @@ require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-pagination-interface.php';
 class QueryCraft_Load_More_Pagination implements QueryCraft_Pagination_Interface
 {
 
-    protected $atts = [];
+    protected $atts = array();
 
-    public function __construct($atts = [])
+    /**
+     * Constructor.
+     *
+     * @param array $atts Shortcode attributes.
+     */
+    public function __construct($atts = array())
     {
         $this->atts = $atts;
     }
 
+    /**
+     * Render the load more button.
+     *
+     * @param WP_Query $query The WP_Query object.
+     * @return string HTML for the load more button.
+     */
     public function render($query)
     {
         if ($query->max_num_pages <= 1) {
