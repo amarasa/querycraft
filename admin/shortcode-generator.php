@@ -23,44 +23,64 @@ if (! current_user_can('manage_options')) {
 /**
  * Get available templates from both theme and plugin.
  *
+ * For 'templates', this function returns an array of template names (physical files).
+ * For 'cta', it returns an associative array where keys are the value to use and values are the label.
+ *
  * @param string $subdir Directory inside the theme or plugin (e.g., 'templates' or 'cta').
- * @return array Unique list of template names (without .php extension).
+ * @return array Unique list of template names.
  */
 function querycraft_get_available_templates($subdir)
 {
-    $templates = array();
-
-    // Get theme overrides.
-    $theme_dir = get_stylesheet_directory() . '/querycraft/' . $subdir;
-    if (is_dir($theme_dir)) {
-        foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
-            $templates[] = basename($file, '.php');
+    if ($subdir === 'cta') {
+        $templates = array();
+        // Get physical file CTAs from theme's querycraft/cta folder.
+        $theme_dir = get_stylesheet_directory() . '/querycraft/cta';
+        if (is_dir($theme_dir)) {
+            foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
+                $name = basename($file, '.php');
+                $templates["file:" . $name] = ucfirst($name) . ' (Physical File)';
+            }
         }
-    }
-
-    // Get plugin defaults.
-    if ('templates' === $subdir) {
+        // Get CTAs from the custom post type.
+        $cta_posts = get_posts(array(
+            'post_type'      => 'querycraft_cta',
+            'posts_per_page' => -1,
+            'post_status'    => 'publish',
+        ));
+        if (! empty($cta_posts)) {
+            foreach ($cta_posts as $cta_post) {
+                $templates["post:" . $cta_post->ID] = get_the_title($cta_post) . ' (Post Type)';
+            }
+        }
+        return $templates;
+    } elseif ($subdir === 'templates') {
+        $templates = array();
+        // Get theme overrides.
+        $theme_dir = get_stylesheet_directory() . '/querycraft/' . $subdir;
+        if (is_dir($theme_dir)) {
+            foreach (glob(trailingslashit($theme_dir) . '*.php') as $file) {
+                $templates[] = basename($file, '.php');
+            }
+        }
+        // Get plugin defaults.
         $plugin_dir = QUERYCRAFT_PLUGIN_DIR . 'templates';
-    } else {
-        // For CTA templates.
-        $plugin_dir = QUERYCRAFT_PLUGIN_DIR . 'cta';
-    }
-    if (is_dir($plugin_dir)) {
-        foreach (glob(trailingslashit($plugin_dir) . '*.php') as $file) {
-            $templates[] = basename($file, '.php');
+        if (is_dir($plugin_dir)) {
+            foreach (glob(trailingslashit($plugin_dir) . '*.php') as $file) {
+                $templates[] = basename($file, '.php');
+            }
         }
+        return array_unique($templates);
     }
-
-    return array_unique($templates);
+    return array();
 }
 
 // Get available post types.
 $post_types = get_post_types(array('public' => true), 'objects');
 
-// Get available templates.
+// Get available templates for posts.
 $available_templates = querycraft_get_available_templates('templates');
 
-// Get available CTA templates.
+// Get available CTA templates (merged from physical files and CPT).
 $available_cta_templates = querycraft_get_available_templates('cta');
 
 // Get available post statuses.
@@ -131,13 +151,13 @@ $taxonomies = get_taxonomies(array('public' => true), 'objects');
                 <td>
                     <select name="qc_cta_template" id="qc-cta-template">
                         <option value="">None</option>
-                        <?php foreach ($available_cta_templates as $cta_template) : ?>
-                            <option value="<?php echo esc_attr($cta_template); ?>">
-                                <?php echo esc_html(ucfirst($cta_template)); ?>
+                        <?php foreach ($available_cta_templates as $value => $label) : ?>
+                            <option value="<?php echo esc_attr($value); ?>">
+                                <?php echo esc_html($label); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <p class="description">Select a CTA template (if any). Leave as "None" to disable.</p>
+                    <p class="description">Select a CTA template. (Physical file CTAs come from your theme's querycraft/cta folder and CTAs from the custom post type are built with Gutenberg.)</p>
                 </td>
             </tr>
             <!-- CTA Interval -->

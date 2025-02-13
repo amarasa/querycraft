@@ -131,8 +131,9 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
+                    // Insert CTA if needed.
                     if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
-                        querycraft_get_cta($atts['cta_template']);
+                        $this->render_cta($atts['cta_template']);
                     }
                 }
 
@@ -151,8 +152,9 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
+                    // Insert CTA if needed.
                     if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
-                        querycraft_get_cta($atts['cta_template']);
+                        $this->render_cta($atts['cta_template']);
                     }
                 }
 
@@ -165,6 +167,7 @@ class QueryCraft
             echo '<p>No posts found.</p>';
         }
 
+        // Handle pagination modules.
         switch ($atts['paged']) {
             case 'numbered':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-numbered-pagination.php';
@@ -189,5 +192,26 @@ class QueryCraft
         }
 
         return ob_get_clean();
+    }
+
+    /**
+     * Render a CTA based on the value provided.
+     * If the value starts with "file:", load a physical file template.
+     * If it starts with "post:", query the CTA post and display its content.
+     *
+     * @param string $cta_value The CTA identifier (e.g., "file:blue-link" or "post:123").
+     */
+    private function render_cta($cta_value)
+    {
+        if (strpos($cta_value, 'file:') === 0) {
+            $file_cta = substr($cta_value, 5);
+            querycraft_get_cta($file_cta);
+        } elseif (strpos($cta_value, 'post:') === 0) {
+            $post_id = intval(substr($cta_value, 5));
+            $cta_post = get_post($post_id);
+            if ($cta_post && $cta_post->post_status === 'publish') {
+                echo apply_filters('the_content', $cta_post->post_content);
+            }
+        }
     }
 }

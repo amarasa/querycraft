@@ -29,6 +29,45 @@ define('QUERYCRAFT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('QUERYCRAFT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('QUERYCRAFT_BACKUP_DIR', QUERYCRAFT_PLUGIN_DIR . 'backups');
 
+// Register the QueryCraft CTA custom post type.
+function querycraft_register_cta_post_type()
+{
+    $labels = array(
+        'name'               => 'QueryCraft CTAs',
+        'singular_name'      => 'QueryCraft CTA',
+        'menu_name'          => 'QueryCraft CTAs',
+        'name_admin_bar'     => 'QueryCraft CTA',
+        'add_new'            => 'Add New',
+        'add_new_item'       => 'Add New QueryCraft CTA',
+        'new_item'           => 'New QueryCraft CTA',
+        'edit_item'          => 'Edit QueryCraft CTA',
+        'view_item'          => 'View QueryCraft CTA',
+        'all_items'          => 'All QueryCraft CTAs',
+        'search_items'       => 'Search QueryCraft CTAs',
+        'parent_item_colon'  => 'Parent QueryCraft CTAs:',
+        'not_found'          => 'No CTAs found.',
+        'not_found_in_trash' => 'No CTAs found in Trash.',
+    );
+    $args = array(
+        'labels'             => $labels,
+        'public'             => false,
+        'publicly_queryable' => false,
+        'show_ui'            => true,
+        'show_in_menu'       => true,
+        'query_var'          => true,
+        'rewrite'            => array('slug' => 'querycraft-cta'),
+        'capability_type'    => 'post',
+        'has_archive'        => false,
+        'hierarchical'       => false,
+        'menu_position'      => 20,
+        'supports'           => array('title', 'editor'),
+        'show_in_rest'       => true, // Enables Gutenberg support.
+    );
+    register_post_type('querycraft_cta', $args);
+}
+add_action('init', 'querycraft_register_cta_post_type');
+
+// Load the main QueryCraft class.
 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/class-querycraft.php';
 
 /*
@@ -52,7 +91,7 @@ function querycraft_load_more_callback()
 {
     $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
 
-    $shortcode_params = [
+    $shortcode_params = array(
         'pt'         => 'post',
         'display'    => 2,
         'paged'      => 'load_more',
@@ -65,8 +104,10 @@ function querycraft_load_more_callback()
         'meta_value' => '',
         'compare'    => '=',
         'template'   => 'title',
+        'cta_template' => '',
+        'cta_interval' => 0,
         'offset'     => 0,
-    ];
+    );
 
     if (! empty($_POST['shortcode'])) {
         $json_string = wp_unslash($_POST['shortcode']);
@@ -94,13 +135,13 @@ function querycraft_load_more_callback()
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
-            querycraft_get_template($shortcode_params['template'], ['post' => get_post()]);
+            querycraft_get_template($shortcode_params['template'], array('post' => get_post()));
         }
     }
     $posts_html = ob_get_clean();
     wp_reset_postdata();
 
-    wp_send_json_success(['posts' => $posts_html]);
+    wp_send_json_success(array('posts' => $posts_html));
 }
 add_action('wp_ajax_querycraft_load_more', 'querycraft_load_more_callback');
 add_action('wp_ajax_nopriv_querycraft_load_more', 'querycraft_load_more_callback');
@@ -225,14 +266,16 @@ function querycraft_on_activation()
         if (! file_exists($theme_qc . '/templates')) {
             wp_mkdir_p($theme_qc . '/templates');
         }
-        if (! file_exists($theme_qc . '/cta')) {
-            wp_mkdir_p($theme_qc . '/cta');
+        // Note: We no longer create a CTA folder by default in the theme if one doesn't exist.
+        $cta_folder = $theme_qc . '/cta';
+        if (! file_exists($cta_folder)) {
+            wp_mkdir_p($cta_folder);
         }
-        $sample_cta_file = $theme_qc . '/cta/sample-cta.php';
+        $sample_cta_file = $cta_folder . '/sample-cta.php';
         if (! file_exists($sample_cta_file)) {
             $sample_cta_content = "<?php
 /**
- * Sample CTA Template for QueryCraft
+ * Sample CTA Template (Physical File) for QueryCraft
  *
  * You can override or remove this file as needed.
  */
@@ -281,17 +324,17 @@ function querycraft_get_terms_callback()
         wp_send_json_error('No taxonomy provided');
     }
     $taxonomy = sanitize_text_field($_GET['taxonomy']);
-    $terms    = get_terms([
+    $terms    = get_terms(array(
         'taxonomy'   => $taxonomy,
         'hide_empty' => false,
-    ]);
-    $options = [];
+    ));
+    $options = array();
     if (! is_wp_error($terms)) {
         foreach ($terms as $term) {
-            $options[] = [
+            $options[] = array(
                 'id'   => $term->slug,
                 'text' => $term->name,
-            ];
+            );
         }
     }
     wp_send_json_success($options);
