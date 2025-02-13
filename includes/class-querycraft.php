@@ -82,89 +82,90 @@ class QueryCraft
             'template'      => 'title',  // Template for rendering each post
             'cta_template'  => '',       // CTA template (if provided)
             'cta_interval'  => 0,        // Insert CTA after every N posts (0 means disabled)
-            'offset'        => 0,        // New attribute: number of posts to skip
+            'offset'        => 0,        // Number of posts to skip
         ], $atts, 'load');
 
-
-        // Build the query.
+        // Build the query arguments.
         $query_args = QueryCraft_Query_Builder::build_query_args($atts);
+        $query_args['ignore_sticky_posts'] = true;
+        $query_args['no_found_rows'] = false;
+        $query_args['cache_results'] = false;
+        $query_args['suppress_filters'] = false;
 
-        // Current page (for normal WP pagination).
-        $current_page = max(1, get_query_var('paged', 1));
-        $query_args['paged'] = $current_page;
+        // Determine current page by checking both 'paged' and 'page'
+        $current_page = max(1, absint(get_query_var('paged')), absint(get_query_var('page')));
+        error_log("Combined current_page: $current_page");
+
+        // If an offset is provided, calculate effective offset; otherwise, set paged.
+        if (isset($atts['offset']) && (int)$atts['offset'] > 0) {
+            $user_offset = (int)$atts['offset'];
+            $posts_per_page = (int)$atts['display'];
+            $query_args['offset'] = $user_offset + (($current_page - 1) * $posts_per_page);
+            if (isset($query_args['paged'])) {
+                unset($query_args['paged']);
+            }
+            error_log("QueryCraft: Offset Found");
+        } else {
+            $posts_per_page = (int)$atts['display'];
+            $query_args['offset'] = (($current_page - 1) * $posts_per_page);
+            $query_args['paged'] = $current_page;
+            error_log("QueryCraft: Offset Not Found");
+        }
+
+        error_log("QueryCraft: query_args = " . print_r($query_args, true));
+
+        // Force WP_Query to use the correct current page.
+        global $paged;
+        $paged = $current_page;
 
         $query = new WP_Query($query_args);
+        error_log("QueryCraft: query = " . print_r($query, true));
 
         ob_start();
 
         if ($query->have_posts()) {
             $pagination_type = sanitize_text_field($atts['paged']);
-
-            // We'll use a counter to track posts in the loop.
             $post_count = 0;
 
             if ('infinite_scroll' === $pagination_type) {
-                // Encode the shortcode attributes for the AJAX request.
                 $shortcode_data = json_encode($atts);
-
-                // Output the container with data attributes.
                 echo '<div class="querycraft-infinite-scroll" 
                     data-current-page="' . esc_attr($current_page) . '"
                     data-max-pages="' . esc_attr($query->max_num_pages) . '"
                     data-shortcode-params="' . esc_attr($shortcode_data) . '">';
-
                 echo '<ul class="querycraft-list">';
 
-                /**
-                 * Before Loop Hook for Infinite Scroll.
-                 */
                 do_action('querycraft_before_loop', $atts, $query);
 
                 while ($query->have_posts()) {
                     $query->the_post();
                     $post_count++;
-                    // Render the post using the selected template.
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-
-                    // If CTA attributes are set, and we've reached the interval, insert the CTA.
                     if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
                         querycraft_get_cta($atts['cta_template']);
                     }
                 }
 
-                /**
-                 * After Loop Hook for Infinite Scroll.
-                 */
                 do_action('querycraft_after_loop', $atts, $query);
 
                 echo '</ul>';
-                echo '</div>'; // close .querycraft-infinite-scroll
-
+                echo '</div>';
                 echo '<div class="querycraft-infinite-scroll-spinner" style="display:none;">Loading...</div>';
-
                 wp_reset_postdata();
             } else {
                 echo '<ul class="querycraft-list">';
 
-                /**
-                 * Before Loop Hook for Normal Loop.
-                 */
                 do_action('querycraft_before_loop', $atts, $query);
 
                 while ($query->have_posts()) {
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-
-                    // Insert CTA after every cta_interval posts, if set.
                     if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
                         querycraft_get_cta($atts['cta_template']);
                     }
                 }
 
-                /**
-                 * After Loop Hook for Normal Loop.
-                 */
                 do_action('querycraft_after_loop', $atts, $query);
 
                 echo '</ul>';
@@ -182,19 +183,16 @@ class QueryCraft
                 $pagination = new QueryCraft_Numbered_Pagination();
                 echo $pagination->render($query);
                 break;
-
             case 'load_more':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-load-more-pagination.php';
                 $pagination = new QueryCraft_Load_More_Pagination($atts);
                 echo $pagination->render($query);
                 break;
-
             case 'infinite_scroll':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-infinite-scroll-pagination.php';
                 $pagination = new QueryCraft_Infinite_Scroll_Pagination($atts);
                 echo $pagination->render($query); // This returns an empty string.
                 break;
-
             case 'prev_next':
                 require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-prev-next-pagination.php';
                 $pagination = new QueryCraft_Prev_Next_Pagination();
