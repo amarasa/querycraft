@@ -92,7 +92,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             <!-- TAB NAVIGATION -->
             <ul class="qc-tabs-nav">
                 <li class="qc-tab-nav-item active" data-tab="qc-tab-general">General Settings</li>
-                <li class="qc-tab-nav-item" data-tab="qc-tab-taxonomy">Taxonomy Filters</li>
+                <li class="qc-tab-nav-item" data-tab="qc-tab-taxonomy">Taxonomy</li>
                 <li class="qc-tab-nav-item" data-tab="qc-tab-cta">CTA Options</li>
                 <li class="qc-tab-nav-item" data-tab="qc-tab-meta">Meta Query</li>
             </ul>
@@ -211,43 +211,61 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                         </div>
                     </div><!-- /#qc-tab-general -->
 
-                    <!-- TAXONOMY FILTERS TAB -->
+                    <!-- TAXONOMY TAB -->
                     <div class="qc-tab-panel" id="qc-tab-taxonomy">
-                        <h2>Taxonomy Filters</h2>
+                        <h2>Taxonomy</h2>
                         <div class="qc-field-group">
-                            <label for="qc-taxonomy"><strong>Include Taxonomy</strong></label>
-                            <select name="qc_taxonomy" id="qc-taxonomy">
-                                <option value="">None</option>
-                                <?php foreach ($taxonomies as $tax): ?>
-                                    <option value="<?php echo esc_attr($tax->name); ?>">
-                                        <?php echo esc_html($tax->label); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label><strong>Filter Mode</strong></label>
+                            <div class="qc-radio-grid">
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_filter_mode" value="include" checked />
+                                    <span>Filter by taxonomy</span>
+                                </label>
+                                <label class="qc-radio-label">
+                                    <input type="radio" name="qc_filter_mode" value="exclude" />
+                                    <span>Exclude taxonomy</span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="qc-field-group">
-                            <label for="qc-term"><strong>Include Term</strong></label>
-                            <select name="qc_term" id="qc-term">
-                                <option value="">None</option>
-                            </select>
+                        <!-- Filter by fields -->
+                        <div id="qc-filter-fields">
+                            <div class="qc-field-group">
+                                <label for="qc-taxonomy"><strong>Filter by taxonomy</strong></label>
+                                <select name="qc_taxonomy" id="qc-taxonomy">
+                                    <option value="">None</option>
+                                    <?php foreach ($taxonomies as $tax): ?>
+                                        <option value="<?php echo esc_attr($tax->name); ?>">
+                                            <?php echo esc_html($tax->label); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="qc-field-group">
+                                <label for="qc-term"><strong>Filter by term</strong></label>
+                                <select name="qc_term" id="qc-term">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
                         </div>
-                        <hr />
-                        <div class="qc-field-group">
-                            <label for="qc-excluded-taxonomy"><strong>Exclude Taxonomy</strong></label>
-                            <select name="qc_excluded_taxonomy" id="qc-excluded-taxonomy">
-                                <option value="">None</option>
-                                <?php foreach ($taxonomies as $tax): ?>
-                                    <option value="<?php echo esc_attr($tax->name); ?>">
-                                        <?php echo esc_html($tax->label); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="qc-field-group">
-                            <label for="qc-excluded-term"><strong>Exclude Term</strong></label>
-                            <select name="qc_excluded_term" id="qc-excluded-term">
-                                <option value="">None</option>
-                            </select>
+                        <!-- Exclude fields -->
+                        <div id="qc-exclude-fields" style="display:none;">
+                            <div class="qc-field-group">
+                                <label for="qc-excluded-taxonomy"><strong>Exclude taxonomy</strong></label>
+                                <select name="qc_excluded_taxonomy" id="qc-excluded-taxonomy">
+                                    <option value="">None</option>
+                                    <?php foreach ($taxonomies as $tax): ?>
+                                        <option value="<?php echo esc_attr($tax->name); ?>">
+                                            <?php echo esc_html($tax->label); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="qc-field-group">
+                                <label for="qc-excluded-term"><strong>Exclude term</strong></label>
+                                <select name="qc_excluded_term" id="qc-excluded-term">
+                                    <option value="">None</option>
+                                </select>
+                            </div>
                         </div>
                     </div><!-- /#qc-tab-taxonomy -->
 
@@ -467,17 +485,37 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             $('#' + tabID).addClass('active');
         });
 
+        // Toggle between Filter and Exclude fields in the taxonomy tab.
+        $('input[name="qc_filter_mode"]').on('change', function() {
+            var mode = $(this).val();
+            if (mode === 'include') {
+                $('#qc-filter-fields').show();
+                $('#qc-exclude-fields').hide();
+            } else {
+                $('#qc-filter-fields').hide();
+                $('#qc-exclude-fields').show();
+            }
+        });
+
         // GATHER & GENERATE SHORTCODE
         function generateShortcode() {
+            // Post Types (checkboxes)
             var postTypes = [];
             $('input[name="qc_post_type[]"]:checked').each(function() {
                 postTypes.push($(this).val());
             });
             var pt = (postTypes.length > 0) ? postTypes.join(',') : 'post';
+
+            // Pagination Type (radio)
             var paged = $('input[name="qc_paged"]:checked').val() || 'numbered';
+
+            // Order By (radio)
             var orderby = $('input[name="qc_orderby"]:checked').val() || 'date';
+
+            // Order (radio)
             var order = $('input[name="qc_order"]:checked').val() || 'DESC';
 
+            // Post Status (checkboxes)
             var statuses = [];
             $('input[name="qc_status[]"]:checked').each(function() {
                 statuses.push($(this).val());
@@ -486,10 +524,22 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             var display = $('#qc-display').val();
             var template = $('#qc-template').val();
             var offset = $('#qc-offset').val();
-            var taxonomy = $('#qc-taxonomy').val();
-            var term = $('#qc-term').val();
-            var excluded_taxonomy = $('#qc-excluded-taxonomy').val();
-            var excluded_term = $('#qc-excluded-term').val();
+
+            // For taxonomy/exclusion, check the filter mode.
+            var filterMode = $('input[name="qc_filter_mode"]:checked').val();
+            var taxonomy = '';
+            var term = '';
+            var excluded_taxonomy = '';
+            var excluded_term = '';
+
+            if (filterMode === 'include') {
+                taxonomy = $('#qc-taxonomy').val();
+                term = $('#qc-term').val();
+            } else {
+                excluded_taxonomy = $('#qc-excluded-taxonomy').val();
+                excluded_term = $('#qc-excluded-term').val();
+            }
+
             var cta_template = $('#qc-cta-template').val();
             var cta_interval = $('#qc-cta-interval').val();
             var meta_key = $('#qc-meta-key').val();
@@ -503,20 +553,24 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             shortcode += ' template="' + template + '"';
             shortcode += ' orderby="' + orderby + '"';
             shortcode += ' order="' + order + '"';
+
             if (statuses.length > 0) {
                 shortcode += ' status="' + statuses.join(',') + '"';
             }
-            if (taxonomy !== '') {
-                shortcode += ' taxonomy="' + taxonomy + '"';
-            }
-            if (term !== '') {
-                shortcode += ' term="' + term + '"';
-            }
-            if (excluded_taxonomy !== '') {
-                shortcode += ' excluded_taxonomy="' + excluded_taxonomy + '"';
-            }
-            if (excluded_term !== '') {
-                shortcode += ' excluded_term="' + excluded_term + '"';
+            if (filterMode === 'include') {
+                if (taxonomy !== '') {
+                    shortcode += ' taxonomy="' + taxonomy + '"';
+                }
+                if (term !== '') {
+                    shortcode += ' term="' + term + '"';
+                }
+            } else {
+                if (excluded_taxonomy !== '') {
+                    shortcode += ' excluded_taxonomy="' + excluded_taxonomy + '"';
+                }
+                if (excluded_term !== '') {
+                    shortcode += ' excluded_term="' + excluded_term + '"';
+                }
             }
             if (cta_template !== '') {
                 shortcode += ' cta_template="' + cta_template + '"';
@@ -541,12 +595,15 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             $('#qc-shortcode-output').val(shortcode);
         }
 
+        // Initial generation.
         generateShortcode();
 
+        // Watch for changes.
         $('#querycraft-shortcode-generator').on('input change', 'input, select', function() {
             generateShortcode();
         });
 
+        // Copy to clipboard.
         $('#qc-copy-btn').on('click', function() {
             var $textarea = $('#qc-shortcode-output');
             $textarea.select();
@@ -558,6 +615,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             });
         });
 
+        // When "Filter by taxonomy" changes.
         $('#qc-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-term').html('<option value="">None</option>');
@@ -583,6 +641,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             }
         });
 
+        // When "Exclude taxonomy" changes.
         $('#qc-excluded-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-excluded-term').html('<option value="">None</option>');
