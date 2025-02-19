@@ -95,6 +95,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                 <li class="qc-tab-nav-item" data-tab="qc-tab-taxonomy">Taxonomy</li>
                 <li class="qc-tab-nav-item" data-tab="qc-tab-cta">CTA Options</li>
                 <li class="qc-tab-nav-item" data-tab="qc-tab-meta">Meta Query</li>
+                <li class="qc-tab-nav-item" data-tab="qc-tab-extras">Extras</li>
             </ul>
 
             <!-- TAB CONTENT WRAPPER -->
@@ -104,7 +105,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                     <!-- GENERAL SETTINGS TAB -->
                     <div class="qc-tab-panel active" id="qc-tab-general">
                         <h2>General Settings</h2>
-
                         <!-- Post Type (checkboxes) -->
                         <div class="qc-field-group">
                             <label><strong>Post Type</strong></label>
@@ -118,13 +118,11 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                                 <?php endforeach; ?>
                             </div>
                         </div>
-
                         <!-- Posts Per Page -->
                         <div class="qc-field-group">
                             <label for="qc-display"><strong>Posts Per Page</strong></label>
                             <input name="qc_display" type="number" id="qc-display" value="6" class="small-text" />
                         </div>
-
                         <!-- Pagination Type (radio) -->
                         <div class="qc-field-group">
                             <label><strong>Pagination Type</strong></label>
@@ -147,7 +145,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                                 </label>
                             </div>
                         </div>
-
                         <!-- Template (select) -->
                         <div class="qc-field-group">
                             <label for="qc-template"><strong>Template</strong></label>
@@ -159,7 +156,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <!-- Order By (radio) -->
                         <div class="qc-field-group">
                             <label><strong>Order By</strong></label>
@@ -174,7 +170,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                                 </label>
                             </div>
                         </div>
-
                         <!-- Order (radio) -->
                         <div class="qc-field-group">
                             <label><strong>Order</strong></label>
@@ -189,7 +184,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                                 </label>
                             </div>
                         </div>
-
                         <!-- Post Status (checkboxes) -->
                         <div class="qc-field-group">
                             <label><strong>Post Status</strong></label>
@@ -203,7 +197,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                                 <?php endforeach; ?>
                             </div>
                         </div>
-
                         <!-- Offset -->
                         <div class="qc-field-group">
                             <label for="qc-offset"><strong>Offset</strong></label>
@@ -312,6 +305,16 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                             </select>
                         </div>
                     </div><!-- /#qc-tab-meta -->
+
+                    <!-- EXTRAS TAB -->
+                    <div class="qc-tab-panel" id="qc-tab-extras">
+                        <h2>Extras</h2>
+                        <div class="qc-field-group">
+                            <label for="qc-container-class"><strong>Container Class</strong></label>
+                            <input name="qc_container_class" type="text" id="qc-container-class" value="" />
+                            <p class="description">This extra class will be appended to the default container (querycraft-list) for custom styling.</p>
+                        </div>
+                    </div><!-- /#qc-tab-extras -->
 
                 </div><!-- /.qc-tabs-content -->
             </form>
@@ -546,6 +549,9 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             var meta_value = $('#qc-meta-value').val();
             var compare = $('#qc-compare').val();
 
+            // Extras: Container Class
+            var container_class = $('#qc-container-class').val();
+
             var shortcode = '[load';
             shortcode += ' pt="' + pt + '"';
             shortcode += ' display="' + display + '"';
@@ -590,20 +596,20 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             if (offset !== '' && offset !== '0') {
                 shortcode += ' offset="' + offset + '"';
             }
+            if (container_class !== '') {
+                shortcode += ' container-class="' + container_class + '"';
+            }
             shortcode += ']';
 
             $('#qc-shortcode-output').val(shortcode);
         }
 
-        // Initial generation.
         generateShortcode();
 
-        // Watch for changes.
         $('#querycraft-shortcode-generator').on('input change', 'input, select', function() {
             generateShortcode();
         });
 
-        // Copy to clipboard.
         $('#qc-copy-btn').on('click', function() {
             var $textarea = $('#qc-shortcode-output');
             $textarea.select();
@@ -615,7 +621,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             });
         });
 
-        // When "Filter by taxonomy" changes.
         $('#qc-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-term').html('<option value="">None</option>');
@@ -641,7 +646,6 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             }
         });
 
-        // When "Exclude taxonomy" changes.
         $('#qc-excluded-taxonomy').on('change', function() {
             var taxonomy = $(this).val();
             $('#qc-excluded-term').html('<option value="">None</option>');

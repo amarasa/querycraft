@@ -83,7 +83,7 @@ class QueryCraft
             'cta_template'  => '',
             'cta_interval'  => 0,
             'offset'        => 0,
-            // Exclusion attributes:
+            'container-class'   => '',
             'excluded_taxonomy' => '',
             'excluded_term'     => '',
         ), $atts, 'load');
@@ -157,6 +157,10 @@ class QueryCraft
         if ($query->have_posts()) {
             $pagination_type = sanitize_text_field($atts['paged']);
             $post_count = 0;
+            // Get the container class from the shortcode attributes.
+            $container_class = isset($atts['container-class']) ? trim($atts['container-class']) : '';
+            // Build the full container class.
+            $full_container_class = 'querycraft-list' . (!empty($container_class) ? ' ' . $container_class : '');
 
             if ('infinite_scroll' === $pagination_type) {
                 $shortcode_data = json_encode($atts);
@@ -164,7 +168,7 @@ class QueryCraft
                     data-current-page="' . esc_attr($current_page) . '"
                     data-max-pages="' . esc_attr($query->max_num_pages) . '"
                     data-shortcode-params="' . esc_attr($shortcode_data) . '">';
-                echo '<ul class="querycraft-list">';
+                echo '<div class="' . esc_attr($full_container_class) . '">';
 
                 do_action('querycraft_before_loop', $atts, $query);
 
@@ -172,19 +176,19 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-                    if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
+                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
                         $this->render_cta($atts['cta_template']);
                     }
                 }
 
                 do_action('querycraft_after_loop', $atts, $query);
 
-                echo '</ul>';
+                echo '</div>';
                 echo '</div>';
                 echo '<div class="querycraft-infinite-scroll-spinner" style="display:none;">Loading...</div>';
                 wp_reset_postdata();
             } else {
-                echo '<ul class="querycraft-list">';
+                echo '<div class="' . esc_attr($full_container_class) . '">';
 
                 do_action('querycraft_before_loop', $atts, $query);
 
@@ -192,19 +196,20 @@ class QueryCraft
                     $query->the_post();
                     $post_count++;
                     querycraft_get_template($atts['template'], array('post' => get_post()));
-                    if (! empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
+                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
                         $this->render_cta($atts['cta_template']);
                     }
                 }
 
                 do_action('querycraft_after_loop', $atts, $query);
 
-                echo '</ul>';
+                echo '</div>';
                 wp_reset_postdata();
             }
         } else {
             echo '<p>No posts found.</p>';
         }
+
 
         // Handle pagination modules.
         switch ($atts['paged']) {
