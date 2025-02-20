@@ -17,39 +17,42 @@ if (! empty($categories)) {
 }
 
 $featured_image = get_the_post_thumbnail($post->ID, 'large', [
-    'class' => 'w-full h-auto object-cover'
+    'class' => 'w-full absolute top-0 left-0 right-0 bottom-0 h-full object-cover translate-z-[1px]'
 ]);
 ?>
 
-<li class="mb-4">
-    <div class="rounded-lg shadow-md p-4 bg-white hover:shadow-lg transition-shadow elevation-2 animate-fadeIn flex flex-col h-full">
+<div class="col-span-12 md:col-span-6 lg:col-span-4">
+    <div class="shadow-md transition-shadow elevation-3 animate-fadeIn h-full">
         <?php if ($featured_image) : ?>
-            <div class="w-full h-48 overflow-hidden rounded-t-md mb-2">
+            <div class="eh-feature-image w-full relative pb-[50%]">
                 <a href="<?php echo esc_url(get_permalink($post)); ?>">
                     <?php echo $featured_image; ?>
                 </a>
+
+                <?php if ($first_category_name) : ?>
+                    <a href="<?php echo esc_url($first_category_link); ?>"
+                        class="bg-zinc-500 text-white absolute z-10 top-[15px] right-[20px] text-xs font-semibold px-2 py-1 rounded-full inline-block">
+                        <?php echo esc_html($first_category_name); ?>
+                    </a>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
-        <?php if ($first_category_name) : ?>
-            <a href="<?php echo esc_url($first_category_link); ?>"
-                class="bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full inline-block">
-                <?php echo esc_html($first_category_name); ?>
-            </a>
-        <?php endif; ?>
-        <h2 class="text-xl font-bold mt-2 line-clamp-2">
-            <a href="<?php echo esc_url(get_permalink($post)); ?>">
-                <?php echo esc_html(get_the_title($post)); ?>
-            </a>
-        </h2>
-        <p class="text-sm text-gray-700 line-clamp-3 mt-2">
-            <?php echo esc_html(get_the_excerpt($post)); ?>
-        </p>
+        <div class="bg-white rounded-br-lg rounded-bl-lg pt-6 px-8">
+            <span class="text-xs text-gray-500 mt-2">
+                <?php echo get_the_date('', $post->ID); ?>
+            </span>
+            <h3 class="eh-card-title text-xl font-bold mt-2">
+                <a href="<?php echo esc_url(get_permalink($post)); ?>">
+                    <?php echo esc_html(get_the_title($post)); ?>
+                </a>
+            </h3>
+            <p class="eh-excerpt text-sm text-gray-700 line-clamp-3 mt-2 mb-8">
+                <?php echo esc_html(get_the_excerpt($post)); ?>
+            </p>
+        </div>
         <a href="<?php echo esc_url(get_permalink($post)); ?>"
-            class="text-indigo-500 font-semibold mt-auto hover:underline animate-bounce">
-            Read More »
+            class="button block bg-slate-400 px-5 py-3 text-white text-center">
+            Read More
         </a>
-        <span class="text-xs text-gray-500 mt-2">
-            <?php echo get_the_date('', $post->ID); ?>
-        </span>
     </div>
-</li>
+</div>
