@@ -3,7 +3,7 @@
  * Plugin Name: QueryCraft
  * Plugin URI:  https://github.com/amarasa/querycraft
  * Description: A flexible shortcode-based plugin for building dynamic post queries with multiple pagination options.
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      Angelo Marasa
  * Author URI:  https://github.com/amarasa
  * License:     GPL-2.0+
@@ -42,32 +42,33 @@ $myUpdateChecker->addQueryArgFilter(function (array $queryArgs) {
 
 */
 
-
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-define('QUERYCRAFT_VERSION', '1.1.0');
+define('QUERYCRAFT_VERSION', '1.1.1');
 define('QUERYCRAFT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('QUERYCRAFT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('QUERYCRAFT_BACKUP_DIR', QUERYCRAFT_PLUGIN_DIR . 'backups');
 
 /**
  * Register the QueryCraft CTA custom post type.
+ * This CPT becomes the top-level "QueryCraft" menu item.
  */
 function querycraft_register_cta_post_type()
 {
     $labels = array(
         'name'               => 'QueryCraft CTAs',
         'singular_name'      => 'QueryCraft CTA',
-        'menu_name'          => 'QueryCraft CTAs',
+        // The main menu name you want to appear in the sidebar:
+        'menu_name'          => 'QueryCraft',
         'name_admin_bar'     => 'QueryCraft CTA',
         'add_new'            => 'Add New',
         'add_new_item'       => 'Add New QueryCraft CTA',
         'new_item'           => 'New QueryCraft CTA',
         'edit_item'          => 'Edit QueryCraft CTA',
         'view_item'          => 'View QueryCraft CTA',
-        'all_items'          => 'All QueryCraft CTAs',
+        'all_items'          => 'All CTAs',
         'search_items'       => 'Search QueryCraft CTAs',
         'parent_item_colon'  => 'Parent QueryCraft CTAs:',
         'not_found'          => 'No CTAs found.',
@@ -78,6 +79,7 @@ function querycraft_register_cta_post_type()
         'public'             => false,
         'publicly_queryable' => false,
         'show_ui'            => true,
+        // 'show_in_menu' => true means it creates a top-level menu labeled "QueryCraft"
         'show_in_menu'       => true,
         'query_var'          => true,
         'rewrite'            => array('slug' => 'querycraft-cta'),
@@ -152,7 +154,7 @@ function querycraft_load_more_callback()
     $query_args = \QueryCraft\QueryCraft_Query_Builder::build_query_args($shortcode_params);
 
     $posts_per_page = (int)$shortcode_params['display'];
-    $current_page   = $page; // since $page comes from the AJAX request
+    $current_page   = $page; // from AJAX
     $user_offset    = isset($shortcode_params['offset']) ? (int)$shortcode_params['offset'] : 0;
 
     if ($user_offset > 0) {
@@ -162,9 +164,8 @@ function querycraft_load_more_callback()
         }
     } else {
         $query_args['offset'] = (($current_page - 1) * $posts_per_page);
-        $query_args['paged'] = $current_page;
+        $query_args['paged']  = $current_page;
     }
-
 
     $query = new \WP_Query($query_args);
 
@@ -185,38 +186,26 @@ add_action('wp_ajax_querycraft_load_more', 'querycraft_load_more_callback');
 add_action('wp_ajax_nopriv_querycraft_load_more', 'querycraft_load_more_callback');
 
 /**
- * Create the main admin menu for QueryCraft.
- * The desired structure:
- * - Top-level: "QueryCraft"
- *   - Submenu: "CTAs" (via the CPT)
- *   - Submenu: "Shortcode Builder"
- *   - Submenu: "Documentation"
+ * Submenu pages under the QueryCraft CPT top-level menu.
+ * Parent slug is "edit.php?post_type=querycraft_cta".
+ * This way, top-level = "QueryCraft" (the CPT listing),
+ * and submenus = "Shortcode Builder" + "Documentation".
  */
-function querycraft_add_admin_menu()
+function querycraft_add_submenus_under_cpt()
 {
-    add_menu_page(
-        'QueryCraft',                     // Page title.
-        'QueryCraft',                     // Menu title.
-        'manage_options',                 // Capability.
-        'querycraft-admin',               // Menu slug.
-        'querycraft_render_shortcode_generator_page', // Callback.
-        'dashicons-admin-customizer',     // Icon.
-        26                                // Position.
-    );
-    // Remove duplicate submenu.
-    remove_submenu_page('querycraft-admin', 'querycraft-admin');
-    // Add submenu for Shortcode Builder.
+    // Submenu for Shortcode Builder.
     add_submenu_page(
-        'querycraft-admin',
+        'edit.php?post_type=querycraft_cta',
         'Shortcode Builder',
         'Shortcode Builder',
         'manage_options',
         'querycraft-shortcode-builder',
         'querycraft_render_shortcode_generator_page'
     );
-    // Add submenu for Documentation.
+
+    // Submenu for Documentation.
     add_submenu_page(
-        'querycraft-admin',
+        'edit.php?post_type=querycraft_cta',
         'Documentation',
         'Documentation',
         'manage_options',
@@ -224,7 +213,7 @@ function querycraft_add_admin_menu()
         'querycraft_render_documentation_page'
     );
 }
-add_action('admin_menu', 'querycraft_add_admin_menu');
+add_action('admin_menu', 'querycraft_add_submenus_under_cpt');
 
 /**
  * Render the Shortcode Builder admin page.

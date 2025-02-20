@@ -71,12 +71,6 @@ jQuery(document).ready(function ($) {
 		if (windowBottom >= containerBottom - 100 && !infiniteLoading) {
 			var currentPage = parseInt($infiniteContainer.data("current-page"));
 			var maxPages = parseInt($infiniteContainer.data("max-pages"));
-			console.log(
-				"Infinite Scroll: currentPage =",
-				currentPage,
-				"maxPages =",
-				maxPages
-			);
 
 			if (currentPage >= maxPages) {
 				return;
@@ -100,7 +94,6 @@ jQuery(document).ready(function ($) {
 					shortcode: rawShortcodeParams,
 				},
 				success: function (response) {
-					console.log("AJAX response (Infinite Scroll):", response);
 					if (response.success) {
 						$infiniteContainer
 							.find(".querycraft-list")
