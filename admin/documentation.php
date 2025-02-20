@@ -150,7 +150,8 @@ if (! current_user_can('manage_options')) {
                 <li><a href="#hooks">5. Hooks and Extensibility</a></li>
                 <li><a href="#faqs">6. Frequently Asked Questions</a></li>
                 <li><a href="#tips">7. Additional Developer Tips</a></li>
-                <li><a href="#conclusion">8. Conclusion</a></li>
+                <li><a href="#styling-pagination">8. Styling Pagination with CSS</a></li>
+                <li><a href="#conclusion">9. Conclusion</a></li>
             </ul>
         </div>
         <h2 id="templating">1. Templating System Overview</h2>
@@ -238,8 +239,44 @@ add_action( 'querycraft_after_loop', 'my_querycraft_after_loop', 10, 2 );
             <li>Test your template overrides in a staging environment before deploying to production.</li>
             <li>Review inline comments in the plugin source code for deeper insights into QueryCraft’s architecture.</li>
         </ul>
-        <h2 id="conclusion">8. Conclusion</h2>
-        <p>This documentation serves as a comprehensive guide for developers looking to extend and customize QueryCraft. With its flexible templating system, integrated CTA features, and powerful hooks, you can create custom solutions without modifying core code. For further details, please refer to the plugin repository or contact support.</p>
+        <h2 id="styling-pagination">8. Styling Pagination with CSS</h2>
+        <p>
+            QueryCraft outputs pagination in two main formats: <strong>Numbered Pagination</strong> and <strong>Previous/Next Pagination</strong>. Both are styled using Tailwind CSS by default, but since the markup is stable, you can easily override these styles in your theme's stylesheet without modifying plugin files.
+        </p>
+        <h3>Numbered Pagination</h3>
+        <p>
+            The numbered pagination is rendered inside a <code>&lt;nav&gt;</code> element with classes such as <code>flex items-center justify-center space-x-2 my-4</code>. Each page link is given additional classes for styling.
+        </p>
+        <p>For example, to override the background color and padding for numbered links, you could add the following CSS to your theme’s stylesheet:</p>
+        <pre><code class="language-css">
+/* Custom styles for numbered pagination links */
+nav[aria-label="Pagination"] a {
+  @apply bg-blue-600 text-white px-3 py-1 rounded;
+}
+
+/* Custom styles for the current page link */
+nav[aria-label="Pagination"] span {
+  @apply bg-blue-800 text-white px-3 py-1 rounded;
+}
+        </code></pre>
+        <h3>Previous/Next Pagination</h3>
+        <p>
+            The previous/next pagination outputs links with Tailwind classes such as <code>px-4 py-2 border border-gray-700 rounded bg-gray-800 text-gray-300 hover:bg-gray-700 transition</code>. To override these, you can add custom CSS in your theme.
+        </p>
+        <p>For instance, to change the background color and border for previous/next links:</p>
+        <pre><code class="language-css">
+/* Custom styles for previous/next pagination links */
+nav[aria-label="Pagination"] a {
+  @apply bg-green-600 text-white px-4 py-2 rounded border border-green-700 hover:bg-green-700 transition;
+}
+        </code></pre>
+        <p>
+            Simply add these CSS rules to your theme’s stylesheet (or via a custom CSS plugin) to override the default Tailwind classes provided by QueryCraft. No changes to the plugin’s PHP code or markup are necessary.
+        </p>
+        <h2 id="conclusion">9. Conclusion</h2>
+        <p>
+            This documentation serves as a comprehensive guide for developers looking to extend and customize QueryCraft. With its flexible templating system, integrated CTA features, and powerful hooks, you can create custom solutions without modifying core code. For further details, please refer to the plugin repository or contact support.
+        </p>
     </div>
 </body>
 
