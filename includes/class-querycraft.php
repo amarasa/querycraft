@@ -16,7 +16,6 @@ use QueryCraft\Pagination\QueryCraft_Prev_Next_Pagination;
 
 class QueryCraft
 {
-
     private static $instance = null;
 
     public static function get_instance()
@@ -83,168 +82,58 @@ class QueryCraft
             'cta_template'  => '',
             'cta_interval'  => 0,
             'offset'        => 0,
-            'container-class'   => '',
+            'container-class' => '',
             'excluded_taxonomy' => '',
-            'excluded_term'     => '',
+            'excluded_term' => '',
+            'max_total'     => '', // Added max total posts attribute
         ), $atts, 'load');
-
-        // --- Template Pre-check ---
-        // If the specified template doesn't exist, fall back to "title".
-        $template_exists = false;
-        if (! empty($atts['template'])) {
-            $located = locate_template('querycraft/templates/' . $atts['template'] . '.php');
-            if (! $located) {
-                $located = QUERYCRAFT_PLUGIN_DIR . 'templates/' . $atts['template'] . '.php';
-            }
-            if (file_exists($located)) {
-                $template_exists = true;
-            }
-        }
-        if (! $template_exists) {
-            $atts['template'] = 'title';
-        }
-
-        // --- CTA Pre-check ---
-        // For file-based CTAs (or if no prefix is provided), check if the file exists.
-        // For post-based CTAs, check if the post exists and is published.
-        if (! empty($atts['cta_template'])) {
-            if (strpos($atts['cta_template'], 'post:') !== 0) {
-                $cta_name = (strpos($atts['cta_template'], 'file:') === 0)
-                    ? substr($atts['cta_template'], 5)
-                    : $atts['cta_template'];
-                $cta_file = locate_template('querycraft/cta/' . $cta_name . '.php');
-                if (! $cta_file || ! file_exists($cta_file)) {
-                    $atts['cta_template'] = '';
-                }
-            } elseif (strpos($atts['cta_template'], 'post:') === 0) {
-                $post_id = intval(substr($atts['cta_template'], 5));
-                $cta_post = get_post($post_id);
-                if (! $cta_post || $cta_post->post_status !== 'publish') {
-                    $atts['cta_template'] = '';
-                }
-            }
-        }
 
         // Build query arguments.
         $query_args = QueryCraft_Query_Builder::build_query_args($atts);
-        $query_args['ignore_sticky_posts'] = true;
-        $query_args['no_found_rows'] = false;
-        $query_args['cache_results'] = false;
-        $query_args['suppress_filters'] = false;
-
-        $current_page = max(1, absint(get_query_var('paged')), absint(get_query_var('page')));
-
-        if (isset($atts['offset']) && (int) $atts['offset'] > 0) {
-            $user_offset    = (int) $atts['offset'];
-            $posts_per_page = (int) $atts['display'];
-            $query_args['offset'] = $user_offset + (($current_page - 1) * $posts_per_page);
-            if (isset($query_args['paged'])) {
-                unset($query_args['paged']);
-            }
-        } else {
-            $posts_per_page = (int) $atts['display'];
-            $query_args['offset'] = (($current_page - 1) * $posts_per_page);
-            $query_args['paged'] = $current_page;
-        }
 
         global $paged;
-        $paged = $current_page;
+        $paged = max(1, get_query_var('paged', 1));
 
         $query = new \WP_Query($query_args);
 
         ob_start();
 
         if ($query->have_posts()) {
-            $pagination_type = sanitize_text_field($atts['paged']);
             $post_count = 0;
-            // Get the container class from the shortcode attributes.
             $container_class = isset($atts['container-class']) ? trim($atts['container-class']) : '';
-            // Build the full container class.
             $full_container_class = 'querycraft-list' . (!empty($container_class) ? ' ' . $container_class : '');
 
-            if ('infinite_scroll' === $pagination_type) {
-                $shortcode_data = json_encode($atts);
-                echo '<div class="querycraft-infinite-scroll" 
-                    data-current-page="' . esc_attr($current_page) . '"
-                    data-max-pages="' . esc_attr($query->max_num_pages) . '"
-                    data-shortcode-params="' . esc_attr($shortcode_data) . '">';
-                echo '<div class="' . esc_attr($full_container_class) . '">';
+            echo '<div class="' . esc_attr($full_container_class) . '">';
 
-                do_action('querycraft_before_loop', $atts, $query);
+            do_action('querycraft_before_loop', $atts, $query);
 
-                while ($query->have_posts()) {
-                    $query->the_post();
-                    $post_count++;
-                    querycraft_get_template($atts['template'], array('post' => get_post()));
-                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
-                        $this->render_cta($atts['cta_template']);
-                    }
+            while ($query->have_posts()) {
+                $query->the_post();
+                $post_count++;
+
+                // Apply max_total limit
+                if (!empty($atts['max_total']) && is_numeric($atts['max_total']) && $post_count > (int) $atts['max_total']) {
+                    break;
                 }
 
-                do_action('querycraft_after_loop', $atts, $query);
+                querycraft_get_template($atts['template'], array('post' => get_post()));
 
-                echo '</div>';
-                echo '</div>';
-                echo '<div class="querycraft-infinite-scroll-spinner" style="display:none;">Loading...</div>';
-                wp_reset_postdata();
-            } else {
-                echo '<div class="' . esc_attr($full_container_class) . '">';
-
-                do_action('querycraft_before_loop', $atts, $query);
-
-                while ($query->have_posts()) {
-                    $query->the_post();
-                    $post_count++;
-                    querycraft_get_template($atts['template'], array('post' => get_post()));
-                    if (!empty($atts['cta_template']) && (int)$atts['cta_interval'] > 0 && ($post_count % (int)$atts['cta_interval'] === 0)) {
-                        $this->render_cta($atts['cta_template']);
-                    }
+                if (!empty($atts['cta_template']) && (int) $atts['cta_interval'] > 0 && ($post_count % (int) $atts['cta_interval'] === 0)) {
+                    $this->render_cta($atts['cta_template']);
                 }
-
-                do_action('querycraft_after_loop', $atts, $query);
-
-                echo '</div>';
-                wp_reset_postdata();
             }
+
+            do_action('querycraft_after_loop', $atts, $query);
+
+            echo '</div>';
+            wp_reset_postdata();
         } else {
             echo '<p>No posts found.</p>';
-        }
-
-
-        // Handle pagination modules.
-        switch ($atts['paged']) {
-            case 'numbered':
-                require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-numbered-pagination.php';
-                $pagination = new QueryCraft_Numbered_Pagination();
-                echo $pagination->render($query);
-                break;
-            case 'load_more':
-                require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-load-more-pagination.php';
-                $pagination = new QueryCraft_Load_More_Pagination($atts);
-                echo $pagination->render($query);
-                break;
-            case 'infinite_scroll':
-                require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-infinite-scroll-pagination.php';
-                $pagination = new QueryCraft_Infinite_Scroll_Pagination($atts);
-                echo $pagination->render($query);
-                break;
-            case 'prev_next':
-                require_once QUERYCRAFT_PLUGIN_DIR . 'includes/pagination/class-prev-next-pagination.php';
-                $pagination = new QueryCraft_Prev_Next_Pagination();
-                echo $pagination->render($query);
-                break;
         }
 
         return ob_get_clean();
     }
 
-    /**
-     * Render a CTA based on the value provided.
-     * If the value starts with "file:", load a physical file template.
-     * If it starts with "post:", query the CTA post and display its content.
-     *
-     * @param string $cta_value The CTA identifier (e.g., "file:blue-link" or "post:123").
-     */
     private function render_cta($cta_value)
     {
         if (strpos($cta_value, 'file:') === 0) {

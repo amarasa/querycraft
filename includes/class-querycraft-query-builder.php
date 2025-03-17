@@ -23,9 +23,9 @@ class QueryCraft_Query_Builder
             'meta_value'      => '',
             'compare'         => '=',
             'offset'          => 0,
-            // New keys for excluding taxonomy:
             'excluded_taxonomy' => '',
             'excluded_term'     => '',
+            'max_total'       => '', // New attribute for max total posts
         );
 
         $parsed = shortcode_atts($defaults, $atts, 'load');
@@ -37,6 +37,11 @@ class QueryCraft_Query_Builder
             'order'          => ('DESC' === strtoupper($parsed['order'])) ? 'DESC' : 'ASC',
             'post_status'    => array_map('sanitize_text_field', explode(',', $parsed['status'])),
         );
+
+        // Apply max total posts limit if set
+        if (!empty($parsed['max_total']) && is_numeric($parsed['max_total'])) {
+            $query_args['posts_per_page'] = min((int) $parsed['display'], (int) $parsed['max_total']);
+        }
 
         // Taxonomy inclusion query.
         if (! empty($parsed['taxonomy']) && ! empty($parsed['term'])) {

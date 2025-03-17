@@ -123,6 +123,14 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                             <label for="qc-display"><strong>Posts Per Page</strong></label>
                             <input name="qc_display" type="number" id="qc-display" value="6" class="small-text" />
                         </div>
+
+                        <!-- Max Total Posts -->
+                        <div class="qc-field-group">
+                            <label for="qc-max-total"><strong>Max Total Posts</strong></label>
+                            <input name="qc_max_total" type="number" id="qc-max-total" value="" class="small-text" />
+                            <p class="description">Set a hard limit on the total number of posts to display (leave blank for no limit).</p>
+                        </div>
+
                         <!-- Pagination Type (radio) -->
                         <div class="qc-field-group">
                             <label><strong>Pagination Type</strong></label>
@@ -255,7 +263,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
                             </div>
                             <div class="qc-field-group">
                                 <label for="qc-excluded-term"><strong>Exclude term</strong></label>
-                                <select name="qc_excluded_term" id="qc-excluded-term">
+                                <select name="qc-excluded-term" id="qc-excluded-term">
                                     <option value="">None</option>
                                 </select>
                             </div>
@@ -377,7 +385,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
     .qc-tabs-nav {
         list-style: none;
         padding: 0;
-        margin: 0 0 20px;
+        margin: 0 0 20px 0;
         display: flex;
         border-bottom: 1px solid #ccc;
     }
@@ -527,6 +535,7 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             var display = $('#qc-display').val();
             var template = $('#qc-template').val();
             var offset = $('#qc-offset').val();
+            var max_total = $('#qc-max-total').val();
 
             // For taxonomy/exclusion, check the filter mode.
             var filterMode = $('input[name="qc_filter_mode"]:checked').val();
@@ -595,6 +604,9 @@ $taxonomies          = get_taxonomies(array('public' => true), 'objects');
             }
             if (offset !== '' && offset !== '0') {
                 shortcode += ' offset="' + offset + '"';
+            }
+            if (max_total !== '' && max_total !== '0') {
+                shortcode += ' max_total="' + max_total + '"';
             }
             if (container_class !== '') {
                 shortcode += ' container-class="' + container_class + '"';

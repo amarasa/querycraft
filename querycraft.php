@@ -3,7 +3,7 @@
  * Plugin Name: QueryCraft
  * Plugin URI:  https://github.com/amarasa/querycraft
  * Description: A flexible shortcode-based plugin for building dynamic post queries with multiple pagination options.
- * Version:     1.1.2
+ * Version:     1.1.3
  * Author:      Angelo Marasa
  * Author URI:  https://github.com/amarasa
  * License:     GPL-2.0+
