@@ -3,28 +3,31 @@
  * Plugin Name: QueryCraft
  * Plugin URI:  https://github.com/amarasa/querycraft
  * Description: A flexible shortcode-based plugin for building dynamic post queries with multiple pagination options.
- * Version:     1.2
+ * Version:     1.21
  * Author:      Angelo Marasa
  * Author URI:  https://github.com/amarasa
  * License:     GPL-2.0+
  * Text Domain: querycraft
  */
 
-require 'puc/plugin-update-checker.php';
+// require 'puc/plugin-update-checker.php';
 
-use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+// use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
-$myUpdateChecker = PucFactory::buildUpdateChecker(
-    'https://github.com/amarasa/querycraft', // GitHub repository URL
-    __FILE__,
-    'querycraft'
-);
+// $myUpdateChecker = PucFactory::buildUpdateChecker(
+//     'https://github.com/amarasa/querycraft', // GitHub repository URL
+//     __FILE__,
+//     'querycraft'
+// );
+
+// Update checker disabled to avoid GitHub API 403 errors with private repositories
+// To re-enable: uncomment above code and add GitHub authentication if repository is private
 
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-define('QUERYCRAFT_VERSION', '1.1.2');
+define('QUERYCRAFT_VERSION', '1.21');
 define('QUERYCRAFT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('QUERYCRAFT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('QUERYCRAFT_BACKUP_DIR', QUERYCRAFT_PLUGIN_DIR . 'backups');
